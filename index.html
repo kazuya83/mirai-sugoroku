@@ -131,6 +131,9 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
 .cm-opt:disabled{background:#f1f3f5;border-color:#dee2e6;color:#868e96}
 .cm-opt:disabled small{color:#adb5bd}
 .cm-hide{justify-self:center;padding:6px 14px;font-size:13px}
+.gsel{display:flex;gap:8px;align-items:center}
+.gsel button{flex:1}
+.gsel button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .stats{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--sub)}
 .stats b{color:var(--ink)}
 .result{display:grid;gap:8px}
@@ -178,21 +181,37 @@ const DREAMS=[
 const FREETER={name:"フリーター",salary:35,req:{}};
 const HOUSES=[{name:"こぢんまりハウス",cost:200},{name:"ひろびろマンション",cost:400},{name:"ゆめのお城",cost:800}];
 // デートの相手（オリジナルキャラクター）。好きなタイプの能力が高いほど好感度が上がりやすい。
+// gender: "f"=女性 "m"=男性。プレイヤーの性別とちがう相手が候補になる。
 const PARTNERS=[
-  {name:"ハルカ",icon:"🎨",like:"sense",desc:"イラストレーター。センスのある人にひかれる"},
-  {name:"ソウタ",icon:"🚒",like:"body",desc:"消防士。たよれる体力自慢が好き"},
-  {name:"ミオ",icon:"🔬",like:"int",desc:"大学の研究員。知的な会話が好き"},
-  {name:"レン",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
-  {name:"アオイ",icon:"🎯",like:"sense",desc:"ダーツバーの看板スタッフ。ダーツがうまい人に弱い"},
-  {name:"ユウキ",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"}];
+  {name:"ハルカ",g:"f",icon:"🎨",like:"sense",desc:"イラストレーター。センスのある人にひかれる"},
+  {name:"ミオ",g:"f",icon:"🔬",like:"int",desc:"大学の研究員。知的な会話が好き"},
+  {name:"アオイ",g:"f",icon:"🎯",like:"sense",desc:"ダーツバーの看板スタッフ。ダーツがうまい人に弱い"},
+  {name:"サクラ",g:"f",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
+  {name:"ナツキ",g:"f",icon:"🏐",like:"body",desc:"バレーボール選手。いっしょに体を動かせる人が好き"},
+  {name:"リコ",g:"f",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
+  {name:"ソウタ",g:"m",icon:"🚒",like:"body",desc:"消防士。たよれる体力自慢が好き"},
+  {name:"カイト",g:"m",icon:"🔭",like:"int",desc:"天文台の研究員。知的な会話が好き"},
+  {name:"ハヤト",g:"m",icon:"🎯",like:"sense",desc:"ダーツプロをめざす青年。ダーツがうまい人に弱い"},
+  {name:"レン",g:"m",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
+  {name:"ユウキ",g:"m",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
+  {name:"シュン",g:"m",icon:"🪑",like:"sense",desc:"家具デザイナー。センスのある人にひかれる"}];
+const candidates=p=>PARTNERS.map((q,i)=>[q,i]).filter(([q])=>q.g!==(p.gender||"m"));
 const DATES=[
-  {label:"映画を見る",icon:"🎬",cost:10,aff:8},
-  {label:"遊園地へ行く",icon:"🎡",cost:30,aff:15},
-  {label:"手料理でおもてなし",icon:"🍳",cost:0,aff:5,bonus:{stat:"sense",min:5,aff:10}},
-  {label:"ダーツバーで勝負",icon:"🎯",cost:15,aff:6,bonus:{stat:"sense",min:6,aff:14}},
-  {label:"高級レストラン",icon:"🍷",cost:60,aff:22}];
+  {label:"映画を見る",icon:"🎬",cost:10,aff:12},
+  {label:"遊園地へ行く",icon:"🎡",cost:30,aff:22},
+  {label:"手料理でおもてなし",icon:"🍳",cost:0,aff:8,bonus:{stat:"sense",min:5,aff:14}},
+  {label:"ダーツバーで勝負",icon:"🎯",cost:15,aff:9,bonus:{stat:"sense",min:6,aff:20}},
+  {label:"高級レストラン",icon:"🍷",cost:60,aff:30}];
 // 選択肢つきイベント。eff は能力値とお金（万円）の増減。
 const CHOICES={
+  toy:{title:"はじめてのおもちゃ",icon:"🧸",opts:[{label:"ボール",eff:{body:2}},{label:"クレヨン",eff:{sense:2}},{label:"絵本",eff:{int:2}},{label:"ぬいぐるみ",eff:{charm:2}}]},
+  park:{title:"公園でなにして遊ぶ？",icon:"🛝",opts:[{label:"鬼ごっこ",eff:{body:2}},{label:"砂場でお城づくり",eff:{sense:2}},{label:"虫の観察",eff:{int:2}},{label:"みんなと仲良く",eff:{charm:2}}]},
+  kinder:{title:"保育園の発表会",icon:"🎤",opts:[{label:"歌をうたう",eff:{charm:1,sense:1}},{label:"ダンス",eff:{body:2}},{label:"劇のナレーター",eff:{int:1,charm:1}},{label:"背景の絵をかく",eff:{sense:2}}]},
+  homework:{title:"宿題のやり方",icon:"✏️",opts:[{label:"きちんとやる",eff:{int:2}},{label:"工作の宿題をがんばる",eff:{sense:2}},{label:"外で遊んでから",eff:{body:2}},{label:"友達といっしょに",eff:{charm:2}}]},
+  sportsday:{title:"運動会",icon:"🏃",opts:[{label:"リレーの選手",eff:{body:3}},{label:"応援団",eff:{charm:2,body:1}},{label:"玉入れ",eff:{sense:1,body:1}},{label:"放送係",eff:{int:1,charm:1}}]},
+  dartskid:{title:"家族でダーツ",icon:"🎯",opts:[{label:"的をねらって練習",eff:{sense:2}},{label:"点数計算係",eff:{int:2}},{label:"盛り上げ役",eff:{charm:2}},{label:"投げまくる",eff:{body:1,sense:1}}]},
+  camp:{title:"林間学校",icon:"🏕️",opts:[{label:"山登り",eff:{body:2}},{label:"星座の観察",eff:{int:2}},{label:"キャンプファイヤーの出し物",eff:{charm:2}},{label:"スケッチ",eff:{sense:2}}]},
+  summer:{title:"夏休み",icon:"🌻",opts:[{label:"毎日プール",eff:{body:2}},{label:"図書館に通う",eff:{int:2}},{label:"絵日記をていねいに",eff:{sense:2}},{label:"いとこと遊ぶ",eff:{charm:2}}]},
   play:{title:"放課後なにする？",icon:"🏫",opts:[{label:"外でサッカー",eff:{body:2}},{label:"図書館で読書",eff:{int:2}},{label:"お絵かき",eff:{sense:2}},{label:"友達とおしゃべり",eff:{charm:2}}]},
   lesson:{title:"習い事をはじめる",icon:"🎒",opts:[{label:"スイミング",eff:{body:2,money:-10}},{label:"ピアノ",eff:{sense:2,money:-10}},{label:"学習塾",eff:{int:2,money:-10}},{label:"習い事はしない",eff:{charm:1}}]},
   research:{title:"夏休みの自由研究",icon:"🔎",opts:[{label:"昆虫採集",eff:{int:1,body:1}},{label:"工作でロボット",eff:{sense:1,int:1}},{label:"ダーツ体験教室",eff:{sense:2}},{label:"みんなで研究",eff:{charm:2}}]},
@@ -204,6 +223,8 @@ const CHOICES={
   holiday:{title:"休日のすごし方",icon:"🗓️",opts:[{label:"ジムで筋トレ",eff:{body:2,money:-10}},{label:"資格の勉強",eff:{int:2,money:-10}},{label:"美術館めぐり",eff:{sense:2,money:-10}},{label:"パーティーに行く",eff:{charm:2,money:-20}}]},
   train:{title:"特訓メニュー",icon:"🏋️",opts:[{label:"早朝ランニング",eff:{body:2}},{label:"イメージトレーニング",eff:{sense:2}},{label:"戦術を研究",eff:{int:2}},{label:"ファンサービス",eff:{charm:2}}]},
   hobby:{title:"新しい趣味をはじめる",icon:"🎲",opts:[{label:"ダーツ",eff:{sense:2,money:-15}},{label:"ヨガ",eff:{body:2,money:-10}},{label:"英会話",eff:{int:2,money:-20}},{label:"料理教室",eff:{sense:1,charm:1,money:-10}}]},
+  weekend:{title:"週末のすごし方",icon:"🗓️",opts:[{label:"ジムでトレーニング",eff:{body:2,money:-10}},{label:"読書会に参加",eff:{int:2,money:-5}},{label:"絵画教室",eff:{sense:2,money:-10}},{label:"友達とバーベキュー",eff:{charm:2,money:-15}}]},
+  challenge:{title:"新しいことに挑戦！",icon:"🔥",opts:[{label:"フルマラソンに出る",eff:{body:3,money:-20}},{label:"難関資格に挑戦",eff:{int:3,money:-30}},{label:"個展をひらく",eff:{sense:3,money:-40}},{label:"イベントの司会",eff:{charm:3}}]},
   study:{title:"スキルアップ",icon:"📚",opts:[{label:"大学院の夜間コース",eff:{int:3,money:-60}},{label:"パーソナルトレーナー",eff:{body:3,money:-50}},{label:"アートスクール",eff:{sense:3,money:-50}},{label:"話し方教室",eff:{charm:3,money:-40}}]}};
 
 const COLORS=["#ff6b6b","#4dabf7","#51cf66","#fcc419","#cc5de8","#ff922b"];
@@ -215,10 +236,15 @@ const M=(a,label,st)=>({amount:a,text:label,st});
 const CH=key=>({key});
 (function build(){
   // 子ども時代（いちばん上の段・右から左へ）
-  const kid=[["start","誕生","👶"],["choice","放課後","🏫",CH("play")],["money","お年玉","🧧",M(20,"お年玉をもらった")],["choice","習い事","🎒",CH("lesson")],
+  // 子ども時代（上の2段）：生まれてから進路を決めるまで。選択肢で能力をのばす。
+  const kid=[["start","誕生","👶"],["choice","おもちゃ","🧸",CH("toy")],["money","お祝い","🎁",M(30,"親せきからお祝い")],["choice","公園","🛝",CH("park")],
+    ["choice","発表会","🎤",CH("kinder")],["card","カード","🃏"],["choice","宿題","✏️",CH("homework")],["money","お手伝い","🧹",M(10,"お手伝いでおこづかい")],
+    ["choice","運動会","🏃",CH("sportsday")],["choice","家族でダーツ","🎯",CH("dartskid")],["choice","林間学校","🏕️",CH("camp")],["choice","夏休み","🌻",CH("summer")],
+    ["choice","放課後","🏫",CH("play")],["money","お年玉","🧧",M(20,"お年玉をもらった")],["choice","習い事","🎒",CH("lesson")],
     ["card","カード","🃏"],["choice","自由研究","🔎",CH("research")],["money","おこづかい","🪙",M(10,"お手伝いでおこづかい")],["choice","部活動","🏅",CH("club")],
-    ["choice","文化祭","🎪",CH("fest")],["choice","テスト前夜","📝",CH("exam")],["choice","進路相談","🧑‍🏫",CH("future")]];
-  kid.forEach((d,i)=>T("y"+i,11-i,-1.2,d[0],d[1],d[2],d[3]));
+    ["choice","文化祭","🎪",CH("fest")],["choice","テスト前夜","📝",CH("exam")],["choice","進路相談","🧑‍🏫",{key:"future",stop:true}]];
+  const kpos=[];for(let x=0;x<=11;x++)kpos.push([x,-2.4]);for(let x=11;x>=1;x--)kpos.push([x,-1.2]);
+  kid.forEach((d,i)=>T("y"+i,kpos[i][0],kpos[i][1],d[0],d[1],d[2],d[3]));
   T("S",0,1,"branch","進路","🚩",{labels:["大学コース","就職コース","夢追いコース"]});
   const col=[["money","入学金","🎓",M(-200,"入学金を払った",{int:2})],["choice","サークル","🎸",CH("circle")],["meet","キャンパスの出会い","💘",{stop:true}],
     ["money","アルバイト","☕",M(60,"カフェでアルバイト",{charm:1})],["date","デート","💑"],["money","留学","✈️",M(-100,"短期留学に行った",{int:2,charm:1})],
@@ -278,8 +304,8 @@ const CH=key=>({key});
   old.forEach((d,i)=>T("o"+i,opos[i][0],opos[i][1],d[0],d[1],d[2],d[3]));
   T("G",0,11.5,"goal","ゴール","🏁",{stop:true});
   const link=(a,b)=>N[a].next.push(b);
-  for(let i=0;i<10;i++)link("y"+i,"y"+(i+1));
-  link("y10","S");
+  for(let i=0;i<kid.length-1;i++)link("y"+i,"y"+(i+1));
+  link("y"+(kid.length-1),"S");
   link("S","c0");link("S","k0");link("S","d0");
   for(let i=0;i<9;i++){link("c"+i,"c"+(i+1));link("k"+i,"k"+(i+1));link("d"+i,"d"+(i+1));}
   link("c9","m0");link("k9","m0");link("d9","m0");
@@ -304,6 +330,17 @@ const CH=key=>({key});
   over("n2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
   over("n16",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
   over("w2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
+  over("m6",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
+  over("s7",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
+  over("n11",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
+  over("n19",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
+  over("w4",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
+  over("r6",{type:"choice",label:"チャレンジ",icon:"🔥",key:"challenge"});
+  over("s5",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
+  over("r8",{type:"jobchange",label:"ヘッドハンティング",icon:"🔄"});
+  over("n7",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
+  over("h3",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
+  over("w5",{type:"jobchange",label:"海外で転職",icon:"🔄"});
   over("h7",{type:"choice",label:"新しい趣味",icon:"🎲",key:"hobby"});
   for(const n of Object.values(N))if(n.type==="card")n.text="カードを1枚もらえる";
   // 年代（駒の見た目）: 0こども 1わかもの 2おとな 3シニア
@@ -406,9 +443,9 @@ function freshLife(){
   return{pos:"y0",money:100,job:null,children:0,married:false,spouse:null,love:null,house:null,retired:false,score:null,st};
 }
 function dealStart(p){const ks=Object.keys(CARDS).filter(k=>k!=="snipe"&&k!=="swap");p.hand=[pick(ks),pick(ks)];Object.assign(p,{shield:0,bonus:false,blocked:false,mod:null,cardUsed:false});}
-function addPlayer(id,name,cpu){
+function addPlayer(id,name,cpu,gender){
   if(S.players.length>=6)return false;
-  S.players.push(Object.assign({id,name:name.slice(0,12)||"プレイヤー",color:COLORS[S.players.length],cpu:!!cpu,online:true},freshLife()));
+  S.players.push(Object.assign({id,name:name.slice(0,12)||"プレイヤー",gender:gender==="f"||gender==="m"?gender:pick(["m","f"]),color:COLORS[S.players.length],cpu:!!cpu,online:true},freshLife()));
   return true;
 }
 
@@ -416,9 +453,9 @@ function hostHandle(from,msg){
   if(!S)return;
   if(msg.t==="join"){
     const p=byId(from);
-    if(p){p.online=true;if(msg.name&&S.phase==="lobby")p.name=msg.name.slice(0,12);}
+    if(p){p.online=true;if(msg.name&&S.phase==="lobby"){p.name=msg.name.slice(0,12);if(msg.gender)p.gender=msg.gender;}}
     else if(S.phase!=="lobby"){Net.sendTo(from,{t:"reject",reason:"ゲームはもう始まっています。観戦モードで表示します。"});}
-    else if(!addPlayer(from,msg.name||"",false)){Net.sendTo(from,{t:"reject",reason:"ルームが満員です（最大6人）。"});}
+    else if(!addPlayer(from,msg.name||"",false,msg.gender)){Net.sendTo(from,{t:"reject",reason:"ルームが満員です（最大6人）。"});}
     commit();return;
   }
   if(msg.t==="leave"){const p=byId(from);if(p){p.online=false;commit();}return;}
@@ -503,7 +540,7 @@ function resolve2(p,n){
     case "choice":{const c=CHOICES[n.key];return ask(p,{kind:"event",title:c.title,icon:c.icon,opts:c.opts.map(o=>({label:o.label,desc:effText(o.eff),eff:o.eff}))});}
     case "meet":return ask(p,{kind:"meet",title:n.label+"：だれとデートする？",icon:"💘",
       text:p.married?"":p.love?"いまは "+PARTNERS[p.love.who].name+"（好感度"+p.love.aff+"）とデート中。乗りかえると好感度はリセット":"",
-      opts:p.married?[{label:"家族を大切にする",desc:"魅力+1",eff:{charm:1}}]:PARTNERS.map((q,i)=>({label:q.icon+" "+q.name,desc:q.desc+"（好き："+ST[q.like]+"）"})).concat([{label:"今はひとりを楽しむ",desc:"魅力+1"}])});
+      opts:p.married?[{label:"家族を大切にする",desc:"魅力+1",eff:{charm:1}}]:candidates(p).map(([q,i])=>({label:q.icon+" "+q.name,desc:q.desc+"（好き："+ST[q.like]+"）",who:i})).concat([{label:"今はひとりを楽しむ",desc:"魅力+1",eff:{charm:1}}])});
     case "date":
       if(p.married){addMoney(p,-20);const t=applyEff(p,{charm:1});ev(p,"💑","夫婦でおでかけ","-"+man(20)+"・"+t,"love");break;}
       if(!p.love){ev(p,"💑","デート","デートする相手がいない…（💘出会いのマスで相手を見つけよう）");break;}
@@ -599,7 +636,7 @@ function jobChoice(p,mode){
   const t={career:"就職先を選ぼう",college:"大卒の就職先を選ぼう",dream:"どの夢に挑戦する？",change:"転職のチャンス！"}[mode];
   return{kind:"job",title:t,icon:mode==="dream"?"🌟":"💼",text:"あなたの能力："+Object.keys(ST).map(k=>ST[k]+p.st[k]).join("・"),opts};
 }
-function proposeRate(a){return a>=80?1:a>=60?0.75:a>=40?0.35:0.1;}
+function proposeRate(a){return a>=70?1:a>=50?0.75:a>=30?0.4:0.15;}
 function ask(p,ch){
   ch.pid=p.id;
   if(p.cpu){const r=applyChoice(p,ch,cpuPick(p,ch));return r;}
@@ -616,8 +653,8 @@ function applyChoice(p,ch,idx){
     return;
   }
   if(ch.kind==="meet"){
-    if(o.eff||idx>=PARTNERS.length){const t=applyEff(p,{charm:1});ev(p,"🌿","ひとり時間",t,"stat");return;}
-    const q=PARTNERS[idx];p.love={who:idx,aff:20+p.st[q.like]*3};
+    if(o.who==null){const t=applyEff(p,{charm:1});ev(p,"🌿","ひとり時間",t,"stat");return;}
+    const q=PARTNERS[o.who];p.love={who:o.who,aff:20+p.st[q.like]*3};
     ev(p,"💘","出会い！",q.name+" とデートすることに（好感度 "+p.love.aff+"）","love");return;
   }
   if(ch.kind==="date"){
@@ -643,9 +680,9 @@ function cpuPick(p,ch){
   const ok=ch.opts.map((o,i)=>[o,i]).filter(([o])=>!o.disabled);
   if(ch.kind==="job"){let best=ok[ok.length-1][1],bv=-1;for(const [o,i] of ok){if(!o.job)continue;const v=o.job.salary+(o.job.dream!=null?40:0);if(v>bv){bv=v;best=i;}}
     if(p.job&&ch.title==="転職のチャンス！"&&bv<p.job.salary+(p.job.dream!=null?40:0)+15)return ch.opts.length-1;return best;}
-  if(ch.kind==="meet"){if(p.married)return 0;const ks=Object.keys(ST);const k=ks.slice().sort((a,b)=>p.st[b]-p.st[a])[0];const i=PARTNERS.findIndex(q=>q.like===k);return i>=0?i:0;}
+  if(ch.kind==="meet"){if(p.married)return 0;const ks=Object.keys(ST);const k=ks.slice().sort((a,b)=>p.st[b]-p.st[a])[0];const i=ch.opts.findIndex(o=>o.who!=null&&PARTNERS[o.who].like===k);return i>=0?i:0;}
   if(ch.kind==="date"){let best=DATES.length,bv=0;DATES.forEach((d,i)=>{if(p.money-d.cost<50)return;const v=d.aff+(d.bonus&&p.st[d.bonus.stat]>=d.bonus.min?d.bonus.aff:0)-d.cost/10;if(v>bv){bv=v;best=i;}});return best;}
-  if(ch.kind==="propose")return p.love&&p.love.aff>=55?0:1;
+  if(ch.kind==="propose")return p.love&&p.love.aff>=45?0:1;
   return pick(ok)[1];
 }
 function setDream(p,i){const d=DREAMS[i];p.job={name:d.name,salary:d.salary,dream:i,icon:d.icon};ev(p,d.icon,"夢への第一歩！",d.name+"になった（給料 "+man(d.salary)+"）");}
@@ -722,7 +759,7 @@ function startHost(name,resume){
   const go=()=>{
     Net.host(code,hostHandle,()=>{
       if(resume){S=resume.s;S.hostId=myId;const me=S.players.find(p=>p.id===resume.s.hostId);if(me)me.id=myId;S.players.forEach(p=>{if(!p.cpu&&p.id!==myId)p.online=false;});}
-      else{S=newState(code);addPlayer(myId,name,false);}
+      else{S=newState(code);addPlayer(myId,name,false,myGender);}
       history.replaceState(null,"",location.pathname+"?room="+code+inviteExtra()+"&host=1");
       commit();
     },err=>{
@@ -734,7 +771,7 @@ function startClient(code,name){
   joined=true;
   appView("connecting");
   let got=false,tries=0,helloTimer=null;
-  const hello=()=>{if(got)return;Net.send({t:"join",name});Net.send({t:"hello"});
+  const hello=()=>{if(got)return;Net.send({t:"join",name,gender:myGender});Net.send({t:"hello"});
     if(++tries>5){setBanner("ルームが見つかりません。ホストがページを開いたままか、招待URLが正しいか確認してください。");return;}
     helloTimer=setTimeout(hello,3000);};
   Net.join(code,msg=>{
@@ -761,23 +798,34 @@ function homeView(){
     app.innerHTML=`<div class="card home"><h2>ルーム ${esc(code)} に参加</h2>
       <div class="muted">名前を入れて参加してください。</div>
       <input id="nm" maxlength="12" placeholder="あなたの名前" value="${esc(name)}">
+      ${genderHtml()}
       <button id="go">参加する</button></div>${rulesHtml()}`;
-    $("#go").onclick=()=>{const n=$("#nm").value.trim()||"ゲスト";startClient(code,n);};
+    bindGender();
+    $("#go").onclick=()=>{const n=$("#nm").value.trim()||"ゲスト";store("l","mirai-name",n);startClient(code,n);};
     return;
   }
   const canResume=savedObj&&savedObj.s&&savedObj.s.phase!=="end"&&(!code||savedObj.code===code);
   app.innerHTML=`<div class="card home"><h2>ルームを作る</h2>
     <div class="muted">あなたがホストになります。ルームを作ると友達に送る招待URLが出ます。</div>
     <input id="nm" maxlength="12" placeholder="あなたの名前" value="${esc(name)}">
+    ${genderHtml()}
     <button id="go">ルームを作る</button>
     ${canResume?'<button class="ghost" id="resume">前回のゲームを再開（ルーム '+esc(savedObj.code)+'）</button>':""}
     <div class="muted">友達から招待URLが届いた人は、そのURLを開いてください。</div></div>${rulesHtml()}`;
+  bindGender();
   $("#go").onclick=()=>{const n=$("#nm").value.trim()||"ホスト";store("l","mirai-name",n);startHost(n,null);};
   if(canResume)$("#resume").onclick=()=>startHost(name,savedObj);
+}
+let myGender=store("l","mirai-gender")||"m";
+function genderHtml(){return `<div class="gsel"><span class="muted">あなたは</span><button class="ghost" data-g="m">👦 男の子</button><button class="ghost" data-g="f">👧 女の子</button></div>`;}
+function bindGender(){
+  const upd=()=>document.querySelectorAll("[data-g]").forEach(b=>b.classList.toggle("on",b.dataset.g===myGender));
+  document.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{myGender=b.dataset.g;store("l","mirai-gender",myGender);upd();});upd();
 }
 function rulesHtml(){return `<div class="card home rules"><details><summary>遊び方</summary>
   <p>2〜6人で遊ぶ人生すごろくです。赤ちゃんとして生まれ、ルーレットを回して進みながら、止まったマスのできごとでお金や能力が変わっていきます。</p>
   <p>🎨センス・💪体力・📘知力・💬魅力の4つの能力があり、子ども時代や大人になってからの選択肢で上がります。仕事にはそれぞれ必要な能力があり、足りないと就けません（ダーツプロはセンス7・体力3など）。🔄転職のチャンスのマスで、能力が上がっていればもっと良い仕事に変えられます。</p>
+  <p>はじめに👦男の子か👧女の子を選びます。子ども時代は2段あり、選択肢で能力をのばしてから進路を決めます。大人になってからも📚スキルアップ・🗓️週末・🔥チャレンジのマスで能力が上がり、🔄転職のチャンスで仕事を変えられます。</p>
   <p>💘出会いのマスでデートする相手を選び、💑デートのマスでデートプランを選んで好感度を上げます。相手ごとに好きな能力があり、その能力が高いほど好感度が上がりやすくなります。💍プロポーズのマスで、プロポーズするかどうかを自分で決めます（好感度が高いほど成功しやすい）。</p>
   <p>💼就職・💒結婚・🏁ゴールのマスは、ルーレットの数が残っていても必ず止まります。💰給料日は通過しただけでも給料がもらえます。</p>
   <p>スタートでは「大学コース（お金がかかるけど給料の高い仕事）」「就職コース（すぐ働ける）」「夢追いコース（ダーツプロ・スポーツ選手・YouTuberなど。給料は低いけど🎯夢チャンスのマスで大きく稼げる）」から選びます。途中の分かれ道では「チャレンジロード（大きく増減）」か「のんびりロード（堅実）」を選べます。</p>
@@ -869,7 +917,7 @@ function lobbyView(){
     <h2>ロビー（ルーム ${esc(S.code)}）</h2>
     ${isHost?`<div class="muted">このURLを友達に送ってください。開くだけで参加できます。</div>
     <div class="invite"><input id="inv" readonly value="${esc(url)}"><button class="ghost" id="cp">コピー</button></div>`:`<div class="muted">${me?"参加しました！ホストがゲームを始めるのを待っています。":"接続中…"}</div>`}
-    <div class="plist">${S.players.map(p=>`<div class="pl"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}
+    <div class="plist">${S.players.map(p=>`<div class="pl"><span class="dot" style="background:${p.color}"></span>${p.gender==="f"?"👧":"👦"} ${esc(p.name)}
       ${p.id===S.hostId?'<span class="tag">ホスト</span>':""}${p.cpu?'<span class="tag">CPU</span>':""}${p.id===myId?'<span class="tag">あなた</span>':""}
       ${!p.online&&!p.cpu?'<span class="tag">切断中</span>':""}
       ${isHost&&p.id!==myId?`<button class="ghost" data-kick="${esc(p.id)}" style="margin-left:auto;padding:4px 10px">外す</button>`:""}</div>`).join("")}</div>
@@ -889,11 +937,11 @@ function lobbyView(){
 }
 
 const TW=64,TH=74,PAD=36;
-function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+(n.y+1.2)*TH;}
+function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+(n.y+2.4)*TH;}
 const TYPE_COLOR={choice:"#d0ebff",meet:"#ffdeeb",date:"#fcc2d7",propose:"#faa2c1",jobchange:"#a5d8ff",start:"#ffe3e3",card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
 function gameShell(){
   const app=$("#app");
-  const W=PAD*2+11*TW,H=PAD*2+12.7*TH+18;
+  const W=PAD*2+11*TW,H=PAD*2+13.9*TH+18;
   let lines="",tiles="";
   for(const n of Object.values(N))for(const m of n.next.map(id=>N[id]))lines+=`<line x1="${tx(n)}" y1="${ty(n)}" x2="${tx(m)}" y2="${ty(m)}" stroke="var(--line)" stroke-width="8" stroke-linecap="round"/>`;
   for(const n of Object.values(N)){
@@ -946,7 +994,7 @@ function drawTokens(){
   const g=$("#tokens");if(!g)return;
   if(mounted3D){
     const focus=animFocus||(V.phase==="play"?V.players[V.turn].id:null);
-    B3.setPositions(V.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,spouse:p.spouse,children:p.children};}),focus);
+    B3.setPositions(V.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,spouse:p.spouse,spouseF:p.spouse!=null&&PARTNERS[p.spouse].g==="f",female:p.gender==="f",children:p.children};}),focus);
   }
   const groups={};
   V.players.forEach((p,i)=>{const pos=animPos[p.id]||p.pos;(groups[pos]=groups[pos]||[]).push({p,i});});

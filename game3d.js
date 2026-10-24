@@ -4,7 +4,7 @@ import * as THREE from "./vendor/three.module.min.js";
 
 const SP = 2.2; // マスの間隔
 const wx = n => (n.x - 5.5) * SP;
-const wz = n => (n.y - 5.15) * SP;
+const wz = n => (n.y - 4.55) * SP;
 
 let renderer, scene, camera, clock, container, nodes;
 let mode = "follow";           // "follow" | "all"
@@ -130,7 +130,7 @@ function buildWorld(typeColor) {
   ground.material.map.repeat.set(36, 36);
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
   // 木のテーブル（盤）
-  const table = roundedBox(29.5, 0.5, 33.5, 0.6, new THREE.MeshPhysicalMaterial({ map: woodTex(), roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.4 }));
+  const table = roundedBox(29.5, 0.5, 36, 0.6, new THREE.MeshPhysicalMaterial({ map: woodTex(), roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.4 }));
   table.position.y = -0.15; table.receiveShadow = table.castShadow = true; scene.add(table);
 
   // 道（石畳）
@@ -166,7 +166,7 @@ function buildWorld(typeColor) {
   }
   // まわりの景色：木・しげみ・花・岩・家・池・雲
   const r = rng(42);
-  const free = (x, z) => !(Math.abs(x) < 16.5 && Math.abs(z) < 18.5);
+  const free = (x, z) => !(Math.abs(x) < 16.5 && Math.abs(z) < 19.5);
   const trunk = new THREE.MeshStandardMaterial({ color: "#7a4e2d", roughness: 0.9 });
   const leaf = ["#3f8f3a", "#4f9e45", "#2f7a33", "#6aa84f"].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, flatShading: true }));
   for (let i = 0; i < 140; i++) {
@@ -242,6 +242,7 @@ function person(shirt, hair, age, pants, skinIdx, longHair) {
     rig[sx < 0 ? "legL" : "legR"] = hip;
   }
   const torso = add(new THREE.CapsuleGeometry(0.15, 0.24, 6, 14), shirtM, 0, 0.66, 0); torso.scale.set(1, 1, 0.75); rig.torso = torso;
+  if (longHair && age !== 0) { const skirt = add(new THREE.CylinderGeometry(0.15, 0.24, 0.26, 16, 1, true), M(pants ? "#6c5ce7" : "#5c7cfa", { side: THREE.DoubleSide, sheen: 0.4 }), 0, 0.42, 0); skirt.scale.z = 0.85; }
   add(new THREE.CylinderGeometry(0.05, 0.06, 0.08, 10), skinM, 0, 0.87, 0);
   for (const sx of [-1, 1]) {
     const sh = new THREE.Group(); sh.position.set(0.2 * sx, 0.8, 0); g.add(sh);
@@ -290,11 +291,11 @@ const PARTNER_SHIRT = ["#e64980", "#20c997", "#f08c00", "#5c7cfa", "#be4bdb", "#
 const HAIRS = ["#3d2b1f", "#5c3d2e", "#1f1f1f", "#8d5524", "#2b1d14", "#a0522d"];
 function makeFamily(p, idx) {
   const g = new THREE.Group(); const rigs = [];
-  const me = person(p.color, HAIRS[idx % HAIRS.length], p.age, null, idx, idx % 2 === 1);
+  const me = person(p.color, HAIRS[idx % HAIRS.length], p.age, null, idx, !!p.female);
   g.add(me); rigs.push(me.userData.rig);
   if (p.married) {
     const sp = p.spouse != null ? p.spouse : idx;
-    const pt = person(PARTNER_SHIRT[sp % 6], HAIRS[(sp + 3) % 6], p.age, "#4a4f57", sp + 1, sp % 2 === 0);
+    const pt = person(PARTNER_SHIRT[sp % 6], HAIRS[(sp + 3) % 6], p.age, "#4a4f57", sp + 1, !!p.spouseF);
     pt.scale.multiplyScalar(0.95); pt.position.set(0.42, 0, -0.12); g.add(pt); rigs.push(pt.userData.rig);
   }
   const kids = Math.min(p.children || 0, 4);
@@ -345,7 +346,7 @@ function animate() {
   for (const n of Object.values(nodes)) if (n._flag) n._flag.rotation.y = Math.sin(tt * 2) * 0.15;
   let tp, tl;
   if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 1.0, g.z); tp = new THREE.Vector3(g.x + 1.2, 3.8, g.z + 5.2); }
-  else { tl = new THREE.Vector3(0, 0, 1.5); tp = new THREE.Vector3(0, 34, 26); }
+  else { tl = new THREE.Vector3(0, 0, 1.5); tp = new THREE.Vector3(0, 37, 28); }
   const a = 1 - Math.exp(-dt * 3);
   camPos.lerp(tp, a); camLook.lerp(tl, a);
   camera.position.copy(camPos); camera.lookAt(camLook);
@@ -389,7 +390,7 @@ const B3 = {
     for (const [pos, ps] of Object.entries(groups)) ps.forEach((p, k) => {
       const to = slot(pos, k, ps.length);
       let t = tokens.get(p.id);
-      const sig = p.age + "|" + !!p.married + "|" + p.spouse + "|" + Math.min(p.children || 0, 4);
+      const sig = p.age + "|" + !!p.married + "|" + p.spouse + "|" + !!p.female + "|" + Math.min(p.children || 0, 4);
       if (!t) { t = { group: makeFamily(p, p.idx), from: to.clone(), to, t0: 0, dur: 1, hop: 0, sig, age: p.age }; tokens.set(p.id, t); t.group.position.copy(to); return; }
       if (t.sig !== sig) {
         const pos0 = t.group.position.clone(); scene.remove(t.group);
