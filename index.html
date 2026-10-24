@@ -180,6 +180,12 @@ const PEER_PREFIX="mirai-sugoroku-v1-";
 
 // ================== 通信レイヤー ==================
 // ホストが正しい状態を持ち、参加者は「操作」を送って「状態」を受け取る。
+function peerErrText(e){
+  const t=e&&e.type;
+  if(t==="browser-incompatible")return "このブラウザはオンライン対戦に対応していません。SafariかChromeの最新版で開いてください。";
+  if(t==="network"||t==="server-error"||t==="socket-error"||t==="socket-closed")return "通信サーバーに接続できませんでした（"+t+"）。少し待ってページを再読み込みしてください。";
+  return "接続でエラーが起きました（"+(t||(e&&e.message)||"不明")+"）。ページを再読み込みしてください。";
+}
 const Net={
   mode:null, peer:null, conns:new Map(), conn:null, bc:null,
   host(code,onMsg,onReady,onFail){
@@ -190,9 +196,11 @@ const Net={
       setTimeout(onReady,0);return;
     }
     if(!window.Peer){onFail("通信ライブラリを読み込めませんでした。ネット接続を確認してください。");return;}
-    this.peer=new Peer(PEER_PREFIX+code);
-    this.peer.on("open",()=>onReady());
-    this.peer.on("error",e=>{if(e.type==="unavailable-id")onFail("taken");else if(e.type!=="peer-unavailable")console.warn(e);});
+    try{this.peer=new Peer(PEER_PREFIX+code);}catch(e){onFail(peerErrText(e));return;}
+    let opened=false;
+    const timer=setTimeout(()=>{if(!opened)onFail("通信サーバーに接続できませんでした（10秒たっても応答なし）。ネット接続を確認して、ページを再読み込みしてください。");},10000);
+    this.peer.on("open",()=>{opened=true;clearTimeout(timer);onReady();});
+    this.peer.on("error",e=>{console.warn(e);if(e.type==="unavailable-id"){clearTimeout(timer);onFail("taken");}else if(e.type!=="peer-unavailable"&&!opened){clearTimeout(timer);onFail(peerErrText(e));}});
     this.peer.on("disconnected",()=>{try{this.peer.reconnect()}catch(e){}});
     this.peer.on("connection",conn=>{
       conn.on("data",d=>{if(d&&d.from){this.conns.set(d.from,conn);onMsg(d.from,d.msg);}});
@@ -215,14 +223,16 @@ const Net={
       setTimeout(onOpen,0);return;
     }
     if(!window.Peer){onFail("通信ライブラリを読み込めませんでした。ネット接続を確認してください。");return;}
-    this.peer=new Peer();
-    this.peer.on("open",()=>{
+    try{this.peer=new Peer();}catch(e){onFail(peerErrText(e));return;}
+    let opened=false;
+    const timer=setTimeout(()=>{if(!opened)onFail("通信サーバーに接続できませんでした（10秒たっても応答なし）。ネット接続を確認して、ページを再読み込みしてください。");},10000);
+    this.peer.on("open",()=>{opened=true;clearTimeout(timer);
       const conn=this.peer.connect(PEER_PREFIX+code,{reliable:true});this.conn=conn;
       conn.on("open",onOpen);
       conn.on("data",onMsg);
       conn.on("close",()=>onFail("ホストとの接続が切れました。ページを再読み込みすると再参加できます。"));
     });
-    this.peer.on("error",e=>{if(e.type==="peer-unavailable")onFail("ルームが見つかりません。ホストがページを開いているか確認してください。");else console.warn(e);});
+    this.peer.on("error",e=>{console.warn(e);clearTimeout(timer);if(e.type==="peer-unavailable")onFail("ルームが見つかりません。ホストがページを開いているか確認してください。");else onFail(peerErrText(e));});
   },
   send(msg){
     if(LOCAL){this.bc&&this.bc.postMessage({to:"host",from:myId,msg});return;}
@@ -380,6 +390,8 @@ function botAct(p){
 // ================== 入口 ==================
 function startHost(name,resume){
   isHost=true;joined=true;
+  if(location.protocol==="file:"&&!LOCAL){setBanner("ファイルを直接開いているため友達を招待できません。https://kazuya83.github.io/mirai-sugoroku/ から開いてください。");return;}
+  appView("preparing");
   let code=resume?resume.code:Math.random().toString(36).slice(2,7).toUpperCase().replace(/[^A-Z0-9]/g,"X");
   const go=()=>{
     Net.host(code,hostHandle,()=>{
@@ -390,7 +402,7 @@ function startHost(name,resume){
     },err=>{
       if(err==="taken"&&!resume){code=Math.random().toString(36).slice(2,7).toUpperCase();Net.peer.destroy();go();}
       else if(err==="taken"){setBanner("前のルームの接続がまだ残っています。10秒ほど待ってから再読み込みしてください。");}
-      else setBanner(err);
+      else{setBanner(err);homeView();}
     });
   };go();
 }
@@ -407,6 +419,7 @@ function setBanner(t){$("#banner").innerHTML=t?'<div class="banner">'+esc(t)+'</
 // ================== 描画 ==================
 function appView(kind){
   const app=$("#app");
+  if(kind==="preparing"){app.innerHTML='<div class="card home"><h2>ルームを準備中…</h2><div class="muted">通信サーバーに接続しています。数秒で招待URLが表示されます。</div></div>';return;}
   if(kind==="connecting"){app.innerHTML='<div class="card home"><h2>接続中…</h2><div class="muted">ルームに接続しています。</div></div>';return;}
 }
 function homeView(){
