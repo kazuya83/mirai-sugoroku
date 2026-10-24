@@ -86,10 +86,53 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
 .nums{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
 .log{max-height:220px;overflow:auto;font-size:13px;display:grid;gap:4px}
 .log div{border-bottom:1px dashed var(--line);padding-bottom:3px}
-.event{position:fixed;left:50%;top:18%;transform:translate(-50%,-10px);opacity:0;pointer-events:none;transition:all .25s;z-index:20;min-width:260px;max-width:min(92vw,380px);text-align:center}
-.event.show{opacity:1;transform:translate(-50%,0)}
-.event .big{font-size:40px}
-.event .ttl{font-weight:800;font-size:18px}
+/* できごとの2D演出 */
+.event{position:fixed;left:50%;top:46%;z-index:30;width:min(88vw,360px);pointer-events:none;background:var(--panel);color:var(--ink);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;text-align:center;opacity:0;transform:translate(-50%,-50%) scale(.3)}
+.event.show{animation:evpop .55s cubic-bezier(.2,1.5,.4,1) forwards}
+.event.show.loss{animation:evpop .55s cubic-bezier(.2,1.5,.4,1) forwards,evshake .45s .55s}
+.event.hide{opacity:1;transform:translate(-50%,-50%);animation:evout .25s forwards}
+@keyframes evpop{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-10deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0)}}
+@keyframes evout{to{opacity:0;transform:translate(-50%,-62%) scale(.92)}}
+@keyframes evshake{0%,100%{transform:translate(-50%,-50%)}20%{transform:translate(-53%,-50%) rotate(-2deg)}40%{transform:translate(-47%,-50%) rotate(2deg)}60%{transform:translate(-52%,-50%)}80%{transform:translate(-48%,-50%)}}
+.ev-band{padding:16px 16px 10px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;position:relative;overflow:hidden}
+.ev-band::after{content:"";position:absolute;inset:-50%;background:conic-gradient(from 0deg,transparent 0 20deg,rgba(255,255,255,.18) 20deg 40deg,transparent 40deg 60deg,rgba(255,255,255,.18) 60deg 80deg,transparent 80deg 100deg,rgba(255,255,255,.18) 100deg 120deg,transparent 120deg);animation:spinrays 6s linear infinite}
+@keyframes spinrays{to{transform:rotate(360deg)}}
+.ev-icon{font-size:58px;display:inline-block;position:relative;z-index:1;animation:evbounce .9s ease-in-out infinite;filter:drop-shadow(0 4px 6px rgba(0,0,0,.25))}
+@keyframes evbounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px) rotate(6deg)}}
+.ev-ttl{font-weight:800;font-size:20px;position:relative;z-index:1;text-shadow:0 2px 6px rgba(0,0,0,.3)}
+.ev-body{padding:12px 16px 16px;display:grid;gap:8px}
+.ev-who{font-size:13px;color:var(--sub)}
+.ev-amt{font-size:30px;font-weight:900;letter-spacing:.02em}
+.ev-amt.plus{color:var(--good)}.ev-amt.minus{color:var(--bad)}
+.chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.chip{padding:3px 10px;border-radius:99px;background:#e7f5ff;color:#1864ab;font-weight:800;font-size:14px;animation:chipin .45s backwards}
+.chip.down{background:#fff0f6;color:#c2255c}
+@keyframes chipin{from{opacity:0;transform:translateY(10px) scale(.6)}}
+.fx2d{position:fixed;inset:0;pointer-events:none;z-index:29;overflow:hidden}
+.pt{position:absolute;left:0;top:0;font-size:26px;will-change:transform,opacity}
+.pt.fall{animation:ptfall var(--d) cubic-bezier(.4,.1,.8,.6) forwards}
+.pt.rise{animation:ptrise var(--d) ease-out forwards}
+.pt.burst{animation:ptburst var(--d) cubic-bezier(.1,.7,.3,1) forwards}
+.pt.conf{width:9px;height:14px;border-radius:2px}
+@keyframes ptfall{from{transform:translate(var(--x),-8vh) rotate(0)}to{transform:translate(calc(var(--x) + var(--dx)),105vh) rotate(var(--r))}}
+@keyframes ptrise{from{transform:translate(var(--x),85vh) scale(.6);opacity:1}to{transform:translate(calc(var(--x) + var(--dx)),15vh) scale(1.2);opacity:0}}
+@keyframes ptburst{from{transform:translate(50vw,46vh) rotate(0);opacity:1}80%{opacity:1}to{transform:translate(calc(50vw + var(--tx)),calc(46vh + var(--ty))) rotate(var(--r));opacity:0}}
+/* 選択肢カード */
+.choice-modal{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(30,20,10,.35);backdrop-filter:blur(2px)}
+.choice-modal.show{display:flex}
+.cm{width:min(100%,460px);max-height:88vh;overflow:auto;display:grid;gap:10px;text-align:center;animation:evpop2 .4s cubic-bezier(.2,1.4,.4,1)}
+@keyframes evpop2{from{opacity:0;transform:scale(.7) translateY(20px)}}
+.cm-icon{font-size:46px;animation:evbounce 1.2s ease-in-out infinite}
+.cm-title{font-weight:800;font-size:19px}
+.cm-opts{display:grid;gap:8px}
+.cm-opt{display:grid;gap:2px;text-align:left;background:linear-gradient(160deg,#fff4e6,#ffe8cc);color:#3b2f25;border:1px solid #f5c58b;font-weight:500;animation:chipin .35s backwards;transition:transform .15s}
+.cm-opt:not(:disabled):hover{transform:translateY(-2px)}
+.cm-opt b{font-size:15px}.cm-opt small{font-size:12px;color:#7a5b3a}
+.cm-opt:disabled{background:#f1f3f5;border-color:#dee2e6;color:#868e96}
+.cm-opt:disabled small{color:#adb5bd}
+.cm-hide{justify-self:center;padding:6px 14px;font-size:13px}
+.stats{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--sub)}
+.stats b{color:var(--ink)}
 .result{display:grid;gap:8px}
 .result .r{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px}
 .result .rank{font-size:22px;font-weight:800;width:36px;text-align:center}
@@ -107,50 +150,92 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
   <div id="banner"></div>
   <div id="app"></div>
 </div>
-<div class="event card" id="event"></div>
+<div class="event" id="event"></div>
+<div class="choice-modal" id="choiceModal"></div>
+<div class="fx2d" id="fx2d"></div>
 <script>
 "use strict";
 // ================== 盤面データ ==================
+// 能力値：センス・体力・知力・魅力。仕事に就くにはそれぞれ必要な能力がある。
+const ST={sense:"センス",body:"体力",int:"知力",charm:"魅力"};
+const ST_ICON={sense:"🎨",body:"💪",int:"📘",charm:"💬"};
 const JOBS1=[
-  {name:"パン職人",salary:60},{name:"配達ドライバー",salary:55},{name:"美容師",salary:65},
-  {name:"ショップ店員",salary:50},{name:"大工",salary:70},{name:"ダーツバー店員",salary:55}];
+  {name:"パン職人",salary:60,req:{sense:3}},{name:"配達ドライバー",salary:55,req:{body:3}},{name:"美容師",salary:65,req:{sense:4,charm:2}},
+  {name:"ショップ店員",salary:50,req:{charm:3}},{name:"大工",salary:70,req:{body:5}},{name:"ダーツバー店員",salary:55,req:{sense:2,charm:2}},
+  {name:"事務員",salary:55,req:{int:3}}];
 const JOBS2=[
-  {name:"エンジニア",salary:110},{name:"お医者さん",salary:160},{name:"研究者",salary:100},
-  {name:"パイロット",salary:140},{name:"デザイナー",salary:95},{name:"スポーツトレーナー",salary:90}];
+  {name:"エンジニア",salary:110,req:{int:7}},{name:"お医者さん",salary:160,req:{int:10,body:3}},{name:"研究者",salary:100,req:{int:8}},
+  {name:"パイロット",salary:140,req:{int:6,body:6}},{name:"デザイナー",salary:95,req:{sense:7}},{name:"スポーツトレーナー",salary:90,req:{body:6,int:3}},
+  {name:"弁護士",salary:150,req:{int:9,charm:3}}];
 // 夢追いコースの仕事：給料は低めだけど「夢チャンス」で大きく稼げる
 const DREAMS=[
-  {name:"ダーツプロ",icon:"🎯",salary:55,win:"ダーツのツアー大会で優勝！",mid:"ダーツ大会でベスト8に入った",lose:"調子が出ずに予選落ち…"},
-  {name:"プロサッカー選手",icon:"⚽",salary:65,win:"決勝ゴールでチームが優勝！",mid:"試合でアシストを記録",lose:"ケガでしばらくお休み…"},
-  {name:"プロ野球選手",icon:"⚾",salary:65,win:"サヨナラホームランでMVP！",mid:"ヒットを量産",lose:"スランプで二軍落ち…"},
-  {name:"プロバスケ選手",icon:"🏀",salary:60,win:"ブザービーターで優勝！",mid:"二桁得点の活躍",lose:"ベンチを温める日々…"},
-  {name:"YouTuber",icon:"📹",salary:45,win:"動画が大バズり！登録者100万人",mid:"コラボ動画が好評",lose:"炎上して謝罪動画…"},
-  {name:"プロゲーマー",icon:"🎮",salary:55,win:"世界大会で優勝！",mid:"国内大会で入賞",lose:"初戦敗退…"}];
+  {name:"ダーツプロ",icon:"🎯",salary:55,req:{sense:7,body:3},win:"ダーツのツアー大会で優勝！",mid:"ダーツ大会でベスト8に入った",lose:"調子が出ずに予選落ち…"},
+  {name:"プロサッカー選手",icon:"⚽",salary:65,req:{body:8,sense:2},win:"決勝ゴールでチームが優勝！",mid:"試合でアシストを記録",lose:"ケガでしばらくお休み…"},
+  {name:"プロ野球選手",icon:"⚾",salary:65,req:{body:7,sense:3},win:"サヨナラホームランでMVP！",mid:"ヒットを量産",lose:"スランプで二軍落ち…"},
+  {name:"プロバスケ選手",icon:"🏀",salary:60,req:{body:8,charm:2},win:"ブザービーターで優勝！",mid:"二桁得点の活躍",lose:"ベンチを温める日々…"},
+  {name:"YouTuber",icon:"📹",salary:45,req:{sense:5,charm:6},win:"動画が大バズり！登録者100万人",mid:"コラボ動画が好評",lose:"炎上して謝罪動画…"},
+  {name:"プロゲーマー",icon:"🎮",salary:55,req:{int:5,sense:6},win:"世界大会で優勝！",mid:"国内大会で入賞",lose:"初戦敗退…"}];
+const FREETER={name:"フリーター",salary:35,req:{}};
 const HOUSES=[{name:"こぢんまりハウス",cost:200},{name:"ひろびろマンション",cost:400},{name:"ゆめのお城",cost:800}];
+// デートの相手（オリジナルキャラクター）。好きなタイプの能力が高いほど好感度が上がりやすい。
+const PARTNERS=[
+  {name:"ハルカ",icon:"🎨",like:"sense",desc:"イラストレーター。センスのある人にひかれる"},
+  {name:"ソウタ",icon:"🚒",like:"body",desc:"消防士。たよれる体力自慢が好き"},
+  {name:"ミオ",icon:"🔬",like:"int",desc:"大学の研究員。知的な会話が好き"},
+  {name:"レン",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
+  {name:"アオイ",icon:"🎯",like:"sense",desc:"ダーツバーの看板スタッフ。ダーツがうまい人に弱い"},
+  {name:"ユウキ",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"}];
+const DATES=[
+  {label:"映画を見る",icon:"🎬",cost:10,aff:8},
+  {label:"遊園地へ行く",icon:"🎡",cost:30,aff:15},
+  {label:"手料理でおもてなし",icon:"🍳",cost:0,aff:5,bonus:{stat:"sense",min:5,aff:10}},
+  {label:"ダーツバーで勝負",icon:"🎯",cost:15,aff:6,bonus:{stat:"sense",min:6,aff:14}},
+  {label:"高級レストラン",icon:"🍷",cost:60,aff:22}];
+// 選択肢つきイベント。eff は能力値とお金（万円）の増減。
+const CHOICES={
+  play:{title:"放課後なにする？",icon:"🏫",opts:[{label:"外でサッカー",eff:{body:2}},{label:"図書館で読書",eff:{int:2}},{label:"お絵かき",eff:{sense:2}},{label:"友達とおしゃべり",eff:{charm:2}}]},
+  lesson:{title:"習い事をはじめる",icon:"🎒",opts:[{label:"スイミング",eff:{body:2,money:-10}},{label:"ピアノ",eff:{sense:2,money:-10}},{label:"学習塾",eff:{int:2,money:-10}},{label:"習い事はしない",eff:{charm:1}}]},
+  research:{title:"夏休みの自由研究",icon:"🔎",opts:[{label:"昆虫採集",eff:{int:1,body:1}},{label:"工作でロボット",eff:{sense:1,int:1}},{label:"ダーツ体験教室",eff:{sense:2}},{label:"みんなで研究",eff:{charm:2}}]},
+  club:{title:"部活動を選ぶ",icon:"🏅",opts:[{label:"運動部",eff:{body:3}},{label:"美術部",eff:{sense:3}},{label:"生徒会",eff:{int:2,charm:1}},{label:"軽音部",eff:{sense:1,charm:2}}]},
+  fest:{title:"文化祭でなにをする？",icon:"🎪",opts:[{label:"劇の主役に立候補",eff:{charm:2}},{label:"舞台セットを作る",eff:{sense:2}},{label:"模擬店を仕切る",eff:{int:1,money:30}},{label:"ステージでダンス",eff:{body:1,charm:1}}]},
+  exam:{title:"テスト前夜",icon:"📝",opts:[{label:"徹夜で勉強",eff:{int:3,body:-1}},{label:"ほどほどに勉強",eff:{int:1}},{label:"気分転換にランニング",eff:{body:2}},{label:"友達と通話",eff:{charm:2,int:-1}}]},
+  future:{title:"進路相談",icon:"🧑‍🏫",opts:[{label:"得意をとことんのばす",eff:{best:2}},{label:"苦手を克服する",eff:{worst:3}},{label:"アルバイトで社会勉強",eff:{charm:1,money:40}}]},
+  circle:{title:"サークルに入る",icon:"🎸",opts:[{label:"テニスサークル",eff:{body:2}},{label:"写真部",eff:{sense:2}},{label:"研究会",eff:{int:2}},{label:"イベントサークル",eff:{charm:2,money:-10}}]},
+  holiday:{title:"休日のすごし方",icon:"🗓️",opts:[{label:"ジムで筋トレ",eff:{body:2,money:-10}},{label:"資格の勉強",eff:{int:2,money:-10}},{label:"美術館めぐり",eff:{sense:2,money:-10}},{label:"パーティーに行く",eff:{charm:2,money:-20}}]},
+  train:{title:"特訓メニュー",icon:"🏋️",opts:[{label:"早朝ランニング",eff:{body:2}},{label:"イメージトレーニング",eff:{sense:2}},{label:"戦術を研究",eff:{int:2}},{label:"ファンサービス",eff:{charm:2}}]},
+  hobby:{title:"新しい趣味をはじめる",icon:"🎲",opts:[{label:"ダーツ",eff:{sense:2,money:-15}},{label:"ヨガ",eff:{body:2,money:-10}},{label:"英会話",eff:{int:2,money:-20}},{label:"料理教室",eff:{sense:1,charm:1,money:-10}}]},
+  study:{title:"スキルアップ",icon:"📚",opts:[{label:"大学院の夜間コース",eff:{int:3,money:-60}},{label:"パーソナルトレーナー",eff:{body:3,money:-50}},{label:"アートスクール",eff:{sense:3,money:-50}},{label:"話し方教室",eff:{charm:3,money:-40}}]}};
+
 const COLORS=["#ff6b6b","#4dabf7","#51cf66","#fcc419","#cc5de8","#ff922b"];
 const RETIRE_BONUS=[300,200,100,50,0,0];
 
 const N={};
 function T(id,x,y,type,label,icon,extra){N[id]=Object.assign({id,x,y,type,label,icon,next:[]},extra||{});}
-const M=(a,label)=>({amount:a,text:label});
+const M=(a,label,st)=>({amount:a,text:label,st});
+const CH=key=>({key});
 (function build(){
-  T("S",0,1,"branch","スタート","🚩",{labels:["大学コース","就職コース","夢追いコース"]});
-  const col=[["money","入学金","🎓",M(-200,"入学金を払った")],["money","サークル","🎸",M(20,"サークルで友達がふえた")],["money","アルバイト","☕",M(60,"カフェでアルバイト")],
-    ["money","参考書","📚",M(-30,"参考書をまとめ買い")],["money","留学","✈️",M(-100,"短期留学に行った")],["money","奨学金","💮",M(100,"奨学金をもらえた")],
-    ["money","学園祭","🎪",M(80,"学園祭の模擬店が大当たり")],["money","卒業旅行","🧳",M(-60,"卒業旅行へ")],["money","資格","📜",M(40,"資格に合格！お祝いをもらう")],
+  // 子ども時代（いちばん上の段・右から左へ）
+  const kid=[["start","誕生","👶"],["choice","放課後","🏫",CH("play")],["money","お年玉","🧧",M(20,"お年玉をもらった")],["choice","習い事","🎒",CH("lesson")],
+    ["card","カード","🃏"],["choice","自由研究","🔎",CH("research")],["money","おこづかい","🪙",M(10,"お手伝いでおこづかい")],["choice","部活動","🏅",CH("club")],
+    ["choice","文化祭","🎪",CH("fest")],["choice","テスト前夜","📝",CH("exam")],["choice","進路相談","🧑‍🏫",CH("future")]];
+  kid.forEach((d,i)=>T("y"+i,11-i,-1.2,d[0],d[1],d[2],d[3]));
+  T("S",0,1,"branch","進路","🚩",{labels:["大学コース","就職コース","夢追いコース"]});
+  const col=[["money","入学金","🎓",M(-200,"入学金を払った",{int:2})],["choice","サークル","🎸",CH("circle")],["meet","キャンパスの出会い","💘",{stop:true}],
+    ["money","アルバイト","☕",M(60,"カフェでアルバイト",{charm:1})],["date","デート","💑"],["money","留学","✈️",M(-100,"短期留学に行った",{int:2,charm:1})],
+    ["card","カード","🃏"],["date","デート","💑"],["money","資格","📜",M(40,"資格に合格！お祝いをもらう",{int:2})],
     ["job","就職(大卒)","💼",{stop:true,tier:2}]];
-  const car=[["job","就職","💼",{stop:true,tier:1}],["payday","給料日","💰"],["money","スーツ","👔",M(-30,"初任給でスーツを買った")],
-    ["money","おごり","🍜",M(20,"先輩にラーメンをおごってもらった")],["payday","給料日","💰"],["money","残業代","🌙",M(40,"残業代が出た")],
-    ["money","スマホ落下","📱",M(-40,"スマホを落として画面がバキバキ")],["money","社内表彰","🏅",M(100,"社内表彰で金一封")],["payday","給料日","💰"],
-    ["money","引っ越し","📦",M(-50,"ひとり暮らしスタート")]];
-  const drm=[["job","夢に挑戦","🌟",{stop:true,tier:3}],["dream","デビュー戦","🎯"],["money","道具代","🎒",M(-50,"練習道具をそろえた")],
-    ["payday","給料日","💰"],["money","ファンレター","💌",M(30,"ファンから差し入れ")],["dream","大舞台","🏟️"],["money","遠征費","🚄",M(-80,"遠征で全国をまわった")],
-    ["payday","給料日","💰"],["money","新聞にのる","📰",M(60,"地元の新聞にのって応援金")],["dream","ビッグチャンス","🌟"]];
+  const car=[["job","就職","💼",{stop:true,tier:1}],["payday","給料日","💰"],["meet","職場の出会い","💘",{stop:true}],
+    ["choice","休日","🗓️",CH("holiday")],["payday","給料日","💰"],["date","デート","💑"],
+    ["card","カード","🃏"],["money","社内表彰","🏅",M(100,"社内表彰で金一封",{charm:1})],["payday","給料日","💰"],["date","デート","💑"]];
+  const drm=[["job","夢に挑戦","🌟",{stop:true,tier:3}],["dream","デビュー戦","🎯"],["meet","ファンとの出会い","💘",{stop:true}],
+    ["choice","特訓","🏋️",CH("train")],["payday","給料日","💰"],["date","デート","💑"],["dream","大舞台","🏟️"],
+    ["date","デート","💑"],["payday","給料日","💰"],["dream","ビッグチャンス","🌟"]];
   col.forEach((d,i)=>T("c"+i,1+i,0,d[0],d[1],d[2],d[3]));
   car.forEach((d,i)=>T("k"+i,1+i,1,d[0],d[1],d[2],d[3]));
   drm.forEach((d,i)=>T("d"+i,1+i,2,d[0],d[1],d[2],d[3]));
-  const main1=[["payday","給料日","💰"],["marry","結婚","💒",{stop:true}],["money","新婚旅行","🏝️",M(-80,"新婚旅行で南の島へ")],
-    ["payday","給料日","💰"],["money","ペット","🐶",M(-20,"子犬を家族にむかえた")],["house","マイホーム","🏠",{stop:true}],["lottery","宝くじ","🎟️"],
-    ["payday","給料日","💰"],["baby","赤ちゃん","👶",{n:1}],["money","車を買う","🚗",M(-150,"ファミリーカーを買った")],["baby","ふたご","👶👶",{n:2}],
+  const main1=[["payday","給料日","💰"],["propose","プロポーズ","💍",{stop:true}],["date","デート","💑"],
+    ["payday","給料日","💰"],["card","カード","🃏"],["house","マイホーム","🏠",{stop:true}],["lottery","宝くじ","🎟️"],
+    ["payday","給料日","💰"],["baby","赤ちゃん","👶",{n:1}],["jobchange","転職のチャンス","🔄"],["baby","ふたご","👶👶",{n:2}],
     ["payday","給料日","💰"],["dream","ダーツ大会","🎯"]];
   const m1pos=[[11,1],[11,3.1]];for(let x=10;x>=0;x--)m1pos.push([x,3.1]);
   main1.forEach((d,i)=>T("m"+i,m1pos[i][0],m1pos[i][1],d[0],d[1],d[2],d[3]));
@@ -193,6 +278,8 @@ const M=(a,label)=>({amount:a,text:label});
   old.forEach((d,i)=>T("o"+i,opos[i][0],opos[i][1],d[0],d[1],d[2],d[3]));
   T("G",0,11.5,"goal","ゴール","🏁",{stop:true});
   const link=(a,b)=>N[a].next.push(b);
+  for(let i=0;i<10;i++)link("y"+i,"y"+(i+1));
+  link("y10","S");
   link("S","c0");link("S","k0");link("S","d0");
   for(let i=0;i<9;i++){link("c"+i,"c"+(i+1));link("k"+i,"k"+(i+1));link("d"+i,"d"+(i+1));}
   link("c9","m0");link("k9","m0");link("d9","m0");
@@ -207,9 +294,20 @@ const M=(a,label)=>({amount:a,text:label});
   for(let i=0;i<old.length-1;i++)link("o"+i,"o"+(i+1));
   link("o"+(old.length-1),"G");
   // カードのマス
-  ["k3","d4","c5","m4","r5","s1","n6","n20","w6","h1","o3","o7","o19"].forEach(id=>Object.assign(N[id],{type:"card",label:"カード",icon:"🃏",amount:undefined,text:"カードを1枚もらえる"}));
+  const over=(id,o)=>{const n=N[id];N[id]=Object.assign({id,x:n.x,y:n.y,next:n.next},o);};
+  ["r5","n6","n20","w6","h1","o3","o7","o19"].forEach(id=>over(id,{type:"card",label:"カード",icon:"🃏"}));
+  over("s1",{type:"date",label:"デート",icon:"💑"});
+  over("s3",{type:"propose",label:"プロポーズ",icon:"💍"});
+  over("r1",{type:"propose",label:"プロポーズ",icon:"💍"});
+  over("s2",{type:"choice",label:"新しい趣味",icon:"🎲",key:"hobby"});
+  over("r4",{type:"meet",label:"パーティーの出会い",icon:"💘"});
+  over("n2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
+  over("n16",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
+  over("w2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
+  over("h7",{type:"choice",label:"新しい趣味",icon:"🎲",key:"hobby"});
+  for(const n of Object.values(N))if(n.type==="card")n.text="カードを1枚もらえる";
   // 年代（駒の見た目）: 0こども 1わかもの 2おとな 3シニア
-  for(const n of Object.values(N))n.age=n.id==="S"?0:/^[ckd]/.test(n.id)?1:/^[oG]/.test(n.id)?3:2;
+  for(const n of Object.values(N))n.age=/^[yS]/.test(n.id)?0:/^[ckd]/.test(n.id)?1:/^[oG]/.test(n.id)?3:2;
 })();
 
 // ================== 共通ユーティリティ ==================
@@ -300,12 +398,17 @@ const byId=id=>S.players.find(p=>p.id===id);
 function log(t){S.log.unshift(t);S.log=S.log.slice(0,40);}
 // 演出（ルーレット・移動・できごと）を順番に記録する。画面側はこの順に再生してから数字を反映する。
 function fx(o){o.seq=++S.seq;S.fx=(S.fx||[]).concat(o).slice(-40);}
-function ev(p,icon,title,text){fx({k:"event",pid:p.id,icon,title,text});log(p.name+"："+title+(text?"（"+text+"）":""));}
+function ev(p,icon,title,text,kind){fx({k:"event",pid:p.id,icon,title,text,kind});log(p.name+"："+title+(text?"（"+text+"）":""));}
 function addMoney(p,v){p.money+=v;}
+// 人生の初期状態（生まれたて）。能力は1ずつ＋ランダムに3ポイント。
+function freshLife(){
+  const st={sense:1,body:1,int:1,charm:1};const ks=Object.keys(ST);for(let i=0;i<3;i++)st[pick(ks)]++;
+  return{pos:"y0",money:100,job:null,children:0,married:false,spouse:null,love:null,house:null,retired:false,score:null,st};
+}
 function dealStart(p){const ks=Object.keys(CARDS).filter(k=>k!=="snipe"&&k!=="swap");p.hand=[pick(ks),pick(ks)];Object.assign(p,{shield:0,bonus:false,blocked:false,mod:null,cardUsed:false});}
 function addPlayer(id,name,cpu){
   if(S.players.length>=6)return false;
-  S.players.push({id,name:name.slice(0,12)||"プレイヤー",color:COLORS[S.players.length],cpu:!!cpu,pos:"S",money:200,job:null,children:0,married:false,house:null,retired:false,score:null,online:true});
+  S.players.push(Object.assign({id,name:name.slice(0,12)||"プレイヤー",color:COLORS[S.players.length],cpu:!!cpu,online:true},freshLife()));
   return true;
 }
 
@@ -342,8 +445,10 @@ function act(pid,a){
   }else if(a.type==="branch"&&S.stage==="branch"){
     if(!N[p.pos].next.includes(a.to))return;
     step(p,a.to);moveOn(p);
-  }else if(a.type==="job"&&S.stage==="job"){
-    if(!DREAMS[a.idx])return;setDream(p,a.idx);endTurn();
+  }else if(a.type==="choose"&&S.stage==="choice"){
+    const ch=S.choice;const o=ch&&ch.opts[a.idx];if(!o||o.disabled)return;
+    S.choice=null;S.stage="resolve";
+    if(applyChoice(p,ch,a.idx)!=="wait")endTurn();
   }else if(a.type==="house"&&S.stage==="house"){
     const h=HOUSES[a.idx];
     if(h){p.house={name:h.name,cost:h.cost};addMoney(p,-h.cost);ev(p,"🏠","マイホーム購入",h.name+" を "+man(h.cost)+" で買った");}
@@ -391,14 +496,29 @@ function resolve(p,n){
 function resolve2(p,n){
   const others=S.players.filter(o=>o!==p&&!o.retired);
   switch(n.type){
-    case "money":addMoney(p,n.amount);ev(p,n.icon,n.label,n.text+" "+(n.amount>=0?"+":"")+man(n.amount));break;
+    case "money":{addMoney(p,n.amount);const t=n.st?applyEff(p,n.st):"";ev(p,n.icon,n.label,n.text+" "+(n.amount>=0?"+":"")+man(n.amount)+(t?"・"+t:""),t?"stat":null);break;}
     case "payday":payday(p,false);break;
-    case "job":
-      if(n.tier===3){if(p.cpu){setDream(p,rnd(DREAMS.length)-1);break;}S.stage="job";return "wait";}
-      {const j=pick(n.tier===2?JOBS2:JOBS1);p.job={name:j.name,salary:j.salary};ev(p,"💼","就職！",j.name+"になった（給料 "+man(j.salary)+"）");break;}
+    case "job":return ask(p,jobChoice(p,n.tier===3?"dream":n.tier===2?"college":"career"));
+    case "jobchange":return ask(p,jobChoice(p,"change"));
+    case "choice":{const c=CHOICES[n.key];return ask(p,{kind:"event",title:c.title,icon:c.icon,opts:c.opts.map(o=>({label:o.label,desc:effText(o.eff),eff:o.eff}))});}
+    case "meet":return ask(p,{kind:"meet",title:n.label+"：だれとデートする？",icon:"💘",
+      text:p.married?"":p.love?"いまは "+PARTNERS[p.love.who].name+"（好感度"+p.love.aff+"）とデート中。乗りかえると好感度はリセット":"",
+      opts:p.married?[{label:"家族を大切にする",desc:"魅力+1",eff:{charm:1}}]:PARTNERS.map((q,i)=>({label:q.icon+" "+q.name,desc:q.desc+"（好き："+ST[q.like]+"）"})).concat([{label:"今はひとりを楽しむ",desc:"魅力+1"}])});
+    case "date":
+      if(p.married){addMoney(p,-20);const t=applyEff(p,{charm:1});ev(p,"💑","夫婦でおでかけ","-"+man(20)+"・"+t,"love");break;}
+      if(!p.love){ev(p,"💑","デート","デートする相手がいない…（💘出会いのマスで相手を見つけよう）");break;}
+      {const q=PARTNERS[p.love.who];return ask(p,{kind:"date",title:q.icon+" "+q.name+" とのデートプラン",icon:"💑",text:"好感度 "+p.love.aff+"／100　"+q.name+"は"+ST[q.like]+"が高い人が好き（あなたの"+ST[q.like]+"："+p.st[q.like]+"）",
+        opts:DATES.map(d=>({label:d.icon+" "+d.label,desc:(d.cost?"-"+man(d.cost)+"・":"")+"好感度+"+d.aff+(d.bonus?"（"+ST[d.bonus.stat]+d.bonus.min+"以上なら+"+(d.aff+d.bonus.aff)+"）":"")})).concat([{label:"今回は見送る",desc:"お金は使わない"}])});}
+    case "propose":
+      if(p.married){log(p.name+" はもう結婚している");break;}
+      if(!p.love){ev(p,"💍",n.label,"プロポーズする相手がいない…");break;}
+      {const q=PARTNERS[p.love.who];const pr=proposeRate(p.love.aff);
+       return ask(p,{kind:"propose",title:q.icon+" "+q.name+" にプロポーズする？",icon:"💍",text:"好感度 "+p.love.aff+"／100",
+        opts:[{label:"プロポーズする！",desc:"成功率 約"+Math.round(pr*100)+"%・失敗すると好感度-15"},{label:"まだやめておく",desc:"デートを重ねてから"}]});}
     case "dream":dreamChance(p,n);break;
     case "marry":{p.married=true;let g=0;others.forEach(o=>{addMoney(o,-30);g+=30;});addMoney(p,g);ev(p,"💒","結婚おめでとう！","みんなからご祝儀 +"+man(g));break;}
-    case "baby":if(!p.house){ev(p,"🏠",n.label,"家がないので子どもはまだ…（家を買ってから！）");break;}
+    case "baby":if(!p.married){ev(p,"👶",n.label,"結婚していないので子どもはまだ…");break;}
+      if(!p.house){ev(p,"🏠",n.label,"家がないので子どもはまだ…（家を買ってから！）");break;}
       {p.children+=n.n;let g=0;others.forEach(o=>{addMoney(o,-10*n.n);g+=10*n.n;});addMoney(p,g);ev(p,"👶",n.n>1?"ふたごが生まれた！":"赤ちゃんが生まれた！","みんなからお祝い +"+man(g));break;}
     case "perchild":{const v=n.amount*p.children;addMoney(p,v);ev(p,n.icon,n.label,p.children?n.text+" "+(v>=0?"+":"")+man(v):"子どもがいないので何もなし");break;}
     case "lottery":{const {r,f}=roll(p);const w=f===1?(spinMax()===10?500:300):f>=0.8?100:0;addMoney(p,w);ev(p,"🎟️","宝くじ","ルーレット "+r+"："+(w?"当たり！ +"+man(w):"はずれ…"));break;}
@@ -447,6 +567,86 @@ function playCard(p,a){
     case "snipe":ev(p,c.icon,"カード「"+c.name+"」",a.num+" マス進む");log(p.name+" はねらい撃ちで "+a.num+" マス進む");startMove(p,a.num);break;
   }
   return true;
+}
+// ================== 能力・選択肢・恋愛 ==================
+function meets(p,req){return Object.entries(req||{}).every(([k,v])=>p.st[k]>=v);}
+function reqText(req){const e=Object.entries(req||{});return e.length?"必要："+e.map(([k,v])=>ST[k]+v).join("・"):"条件なし";}
+function effText(eff){
+  const t=[];for(const [k,v] of Object.entries(eff||{})){
+    if(ST[k])t.push(ST[k]+(v>=0?"+":"")+v);else if(k==="money")t.push((v>=0?"+":"-")+man(Math.abs(v)));
+    else if(k==="best")t.push("いちばん高い能力+"+v);else if(k==="worst")t.push("いちばん低い能力+"+v);}
+  return t.join("・");
+}
+function applyEff(p,eff){
+  const e=Object.assign({},eff||{});
+  const ks=Object.keys(ST);
+  if(e.best){const k=ks.slice().sort((a,b)=>p.st[b]-p.st[a])[0];e[k]=(e[k]||0)+e.best;delete e.best;}
+  if(e.worst){const k=ks.slice().sort((a,b)=>p.st[a]-p.st[b])[0];e[k]=(e[k]||0)+e.worst;delete e.worst;}
+  for(const k of ks)if(e[k])p.st[k]=Math.max(0,Math.min(20,p.st[k]+e[k]));
+  if(e.money)addMoney(p,e.money);
+  return effText(e);
+}
+function jobChoice(p,mode){
+  const mk=(j,i,dream)=>({label:(j.icon||"💼")+" "+j.name,desc:"給料"+man(j.salary)+"・"+reqText(j.req)+(dream?"・夢チャンスで大きく稼げる":""),job:Object.assign({name:j.name,salary:j.salary},dream?{dream:i,icon:j.icon}:{}),disabled:!meets(p,j.req)});
+  let opts=[];
+  if(mode==="career")opts=JOBS1.map(j=>mk(j));
+  if(mode==="college")opts=JOBS2.map(j=>mk(j)).concat(JOBS1.map(j=>mk(j)));
+  if(mode==="dream")opts=DREAMS.map((j,i)=>mk(j,i,true));
+  if(mode==="change")opts=JOBS2.map(j=>mk(j)).concat(DREAMS.map((j,i)=>mk(j,i,true)),JOBS1.map(j=>mk(j))).filter(o=>!p.job||o.job.name!==p.job.name);
+  opts.sort((a,b)=>(a.disabled?1:0)-(b.disabled?1:0));
+  if(mode==="change")opts.push({label:"今の仕事を続ける",desc:p.job?p.job.name+"（給料"+man(p.job.salary)+"）":""});
+  else opts.push({label:"🧑‍🔧 "+(mode==="dream"?"夢を追いながらアルバイト":"フリーター"),desc:"給料"+man(FREETER.salary)+"・条件なし",job:{name:FREETER.name,salary:FREETER.salary}});
+  const t={career:"就職先を選ぼう",college:"大卒の就職先を選ぼう",dream:"どの夢に挑戦する？",change:"転職のチャンス！"}[mode];
+  return{kind:"job",title:t,icon:mode==="dream"?"🌟":"💼",text:"あなたの能力："+Object.keys(ST).map(k=>ST[k]+p.st[k]).join("・"),opts};
+}
+function proposeRate(a){return a>=80?1:a>=60?0.75:a>=40?0.35:0.1;}
+function ask(p,ch){
+  ch.pid=p.id;
+  if(p.cpu){const r=applyChoice(p,ch,cpuPick(p,ch));return r;}
+  S.choice=ch;S.stage="choice";return "wait";
+}
+function applyChoice(p,ch,idx){
+  const o=ch.opts[idx];
+  if(ch.kind==="event"){const t=applyEff(p,o.eff);ev(p,ch.icon,ch.title,o.label+"："+t,"stat");return;}
+  if(ch.kind==="job"){
+    if(!o.job){log(p.name+" は今の仕事を続ける");return;}
+    p.job=Object.assign({},o.job);
+    if(p.job.dream!=null)ev(p,p.job.icon,"夢への第一歩！",p.job.name+"になった（給料 "+man(p.job.salary)+"）","job");
+    else ev(p,"💼",ch.title==="転職のチャンス！"?"転職！":"就職！",p.job.name+"になった（給料 "+man(p.job.salary)+"）","job");
+    return;
+  }
+  if(ch.kind==="meet"){
+    if(o.eff||idx>=PARTNERS.length){const t=applyEff(p,{charm:1});ev(p,"🌿","ひとり時間",t,"stat");return;}
+    const q=PARTNERS[idx];p.love={who:idx,aff:20+p.st[q.like]*3};
+    ev(p,"💘","出会い！",q.name+" とデートすることに（好感度 "+p.love.aff+"）","love");return;
+  }
+  if(ch.kind==="date"){
+    const d=DATES[idx];if(!d){log(p.name+" はデートを見送った");return;}
+    const q=PARTNERS[p.love.who];
+    let g=d.aff+Math.floor(p.st[q.like]/2);
+    if(d.bonus&&p.st[d.bonus.stat]>=d.bonus.min)g+=d.bonus.aff;
+    addMoney(p,-d.cost);p.love.aff=Math.min(100,p.love.aff+g);
+    ev(p,d.icon,"デート："+d.label,q.name+" の好感度 +"+g+"（"+p.love.aff+"／100）"+(d.cost?"・-"+man(d.cost):""),"love");return;
+  }
+  if(ch.kind==="propose"){
+    if(idx!==0){log(p.name+" はプロポーズを見送った");return;}
+    const q=PARTNERS[p.love.who];
+    if(Math.random()<proposeRate(p.love.aff)){
+      p.married=true;p.spouse=p.love.who;
+      const others=S.players.filter(o2=>o2!==p&&!o2.retired);let g=0;others.forEach(o2=>{addMoney(o2,-30);g+=30;});addMoney(p,g);
+      ev(p,"💒","プロポーズ大成功！",q.name+" と結婚！みんなからご祝儀 +"+man(g),"party");
+    }else{p.love.aff=Math.max(0,p.love.aff-15);ev(p,"💔","返事は「もう少し待って」…",q.name+" の好感度 -15（"+p.love.aff+"）","loss");}
+    return;
+  }
+}
+function cpuPick(p,ch){
+  const ok=ch.opts.map((o,i)=>[o,i]).filter(([o])=>!o.disabled);
+  if(ch.kind==="job"){let best=ok[ok.length-1][1],bv=-1;for(const [o,i] of ok){if(!o.job)continue;const v=o.job.salary+(o.job.dream!=null?40:0);if(v>bv){bv=v;best=i;}}
+    if(p.job&&ch.title==="転職のチャンス！"&&bv<p.job.salary+(p.job.dream!=null?40:0)+15)return ch.opts.length-1;return best;}
+  if(ch.kind==="meet"){if(p.married)return 0;const ks=Object.keys(ST);const k=ks.slice().sort((a,b)=>p.st[b]-p.st[a])[0];const i=PARTNERS.findIndex(q=>q.like===k);return i>=0?i:0;}
+  if(ch.kind==="date"){let best=DATES.length,bv=0;DATES.forEach((d,i)=>{if(p.money-d.cost<50)return;const v=d.aff+(d.bonus&&p.st[d.bonus.stat]>=d.bonus.min?d.bonus.aff:0)-d.cost/10;if(v>bv){bv=v;best=i;}});return best;}
+  if(ch.kind==="propose")return p.love&&p.love.aff>=55?0:1;
+  return pick(ok)[1];
 }
 function setDream(p,i){const d=DREAMS[i];p.job={name:d.name,salary:d.salary,dream:i,icon:d.icon};ev(p,d.icon,"夢への第一歩！",d.name+"になった（給料 "+man(d.salary)+"）");}
 function dreamChance(p,n){
@@ -509,7 +709,7 @@ function botAct(id){
   const p=S.players.find(o=>o.id===id);if(!p||S.phase!=="play"||cur()!==p)return;
   if(S.stage==="spin"){const c=botCard(p);if(c)act(p.id,Object.assign({type:"card"},c));else act(p.id,{type:"spin"});}
   else if(S.stage==="branch")act(p.id,{type:"branch",to:pick(N[p.pos].next)});
-  else if(S.stage==="job")act(p.id,{type:"job",idx:rnd(DREAMS.length)-1});
+  else if(S.stage==="choice")act(p.id,{type:"choose",idx:cpuPick(p,S.choice)});
   else if(S.stage==="house"){const ok=HOUSES.map((h,i)=>[h,i]).filter(([h])=>h.cost<=p.money);act(p.id,{type:"house",idx:ok.length?ok[ok.length-1][1]:0});}
 }
 
@@ -576,12 +776,14 @@ function homeView(){
   if(canResume)$("#resume").onclick=()=>startHost(name,savedObj);
 }
 function rulesHtml(){return `<div class="card home rules"><details><summary>遊び方</summary>
-  <p>2〜6人で遊ぶすごろくです。順番にルーレット（1〜10）を回して進み、止まったマスのできごとでお金が増えたり減ったりします。</p>
+  <p>2〜6人で遊ぶ人生すごろくです。赤ちゃんとして生まれ、ルーレットを回して進みながら、止まったマスのできごとでお金や能力が変わっていきます。</p>
+  <p>🎨センス・💪体力・📘知力・💬魅力の4つの能力があり、子ども時代や大人になってからの選択肢で上がります。仕事にはそれぞれ必要な能力があり、足りないと就けません（ダーツプロはセンス7・体力3など）。🔄転職のチャンスのマスで、能力が上がっていればもっと良い仕事に変えられます。</p>
+  <p>💘出会いのマスでデートする相手を選び、💑デートのマスでデートプランを選んで好感度を上げます。相手ごとに好きな能力があり、その能力が高いほど好感度が上がりやすくなります。💍プロポーズのマスで、プロポーズするかどうかを自分で決めます（好感度が高いほど成功しやすい）。</p>
   <p>💼就職・💒結婚・🏁ゴールのマスは、ルーレットの数が残っていても必ず止まります。💰給料日は通過しただけでも給料がもらえます。</p>
   <p>スタートでは「大学コース（お金がかかるけど給料の高い仕事）」「就職コース（すぐ働ける）」「夢追いコース（ダーツプロ・スポーツ選手・YouTuberなど。給料は低いけど🎯夢チャンスのマスで大きく稼げる）」から選びます。途中の分かれ道では「チャレンジロード（大きく増減）」か「のんびりロード（堅実）」を選べます。</p>
   <p>そのあとも「人生の転機」で「世界チャレンジロード」か「ふるさとロード」を選び、老後のマスを進んでゴールを目指します。キャラクターは進むほど こども→わかもの→おとな→シニア と成長し、結婚相手や子どもも一緒に歩きます。</p>
   <p>ロビーで「じっくりコース（ルーレット1〜6・30分以上）」か「さくさくコース（1〜10・短め）」を選べます。</p>
-  <p>👶赤ちゃんのマスは、🏠家を持っていないと子どもが生まれません。結婚のあとの🏠マイホームのマスは必ず止まります。</p>
+  <p>👶赤ちゃんのマスは、結婚していて🏠家を持っていないと子どもが生まれません。プロポーズのあとの🏠マイホームのマスは必ず止まります。</p>
   <p>🃏カード：はじめに2枚もらえて、🃏のマスでも1枚もらえます（最大5枚）。自分の番にルーレットを回す前に1枚使えます。「ダッシュ（+3）」「ちょい進み（半分）」「ねらい撃ち（好きな数だけ進む）」で止まるマスをねらったり、「保険」「ボーナス」でお金を守ったり、「取り立て」「転職交換」「通せんぼ」でライバルのじゃまをしたり。使いどころが勝負です。</p>
   <p>全員がゴールしたら、所持金で順位を決めます。家はゴール時にルーレットで決まる値段で売れます。借金（マイナス）は最後に1.2倍になります。</p></details></div>`;}
 
@@ -625,12 +827,38 @@ function spinWheel(v){
   w.style.transform="rotate("+wheelRot+"deg)";
   return wait(1500).then(()=>{$("#spinVal").textContent=v;});
 }
+const EV_COLORS={gain:["#fcc419","#f08c00"],loss:["#ff6b6b","#c92a2a"],love:["#f783ac","#d6336c"],party:["#9775fa","#f06595"],stat:["#4dabf7","#1971c2"],job:["#38d9a9","#0ca678"],card:["#9775fa","#5f3dc4"],info:["#ffa94d","#f76707"]};
+function evKind(e){
+  if(e.kind)return e.kind;
+  if(/カード/.test(e.title))return "card";
+  return fxOf(e)||"info";
+}
+function particles(kind){
+  const L=$("#fx2d");if(!L||SPEED<1)return;
+  const add=(cls,html,vars,style)=>{const d=document.createElement("div");d.className="pt "+cls;d.innerHTML=html;for(const [k,v] of Object.entries(vars))d.style.setProperty(k,v);if(style)Object.assign(d.style,style);L.appendChild(d);setTimeout(()=>d.remove(),4000);};
+  const R=(a,b)=>a+Math.random()*(b-a);
+  if(kind==="gain")for(let i=0;i<22;i++)add("fall",pick(["🪙","💰","💴"]),{"--x":R(0,100)+"vw","--dx":R(-10,10)+"vw","--r":R(-540,540)+"deg","--d":R(1.2,2.2)+"s"},{animationDelay:R(0,.6)+"s"});
+  if(kind==="loss")for(let i=0;i<12;i++)add("rise",pick(["💸","💸","🍂"]),{"--x":R(25,75)+"vw","--dx":R(-25,25)+"vw","--d":R(1.4,2.2)+"s"},{animationDelay:R(0,.5)+"s"});
+  if(kind==="love")for(let i=0;i<18;i++)add("rise",pick(["💗","💕","💖","❤️"]),{"--x":R(10,90)+"vw","--dx":R(-10,10)+"vw","--d":R(1.6,2.6)+"s"},{animationDelay:R(0,.7)+"s"});
+  if(kind==="stat")for(let i=0;i<14;i++){const a=R(0,6.28),r=R(120,260);add("burst",pick(["✨","⭐","🌟"]),{"--tx":Math.cos(a)*r+"px","--ty":Math.sin(a)*r+"px","--r":R(-180,180)+"deg","--d":R(.9,1.5)+"s"});}
+  if(kind==="party"||kind==="job"){const n=kind==="party"?70:35;for(let i=0;i<n;i++){const a=R(0,6.28),r=R(150,460);
+    add("burst conf","",{"--tx":Math.cos(a)*r+"px","--ty":(Math.sin(a)*r+R(60,240))+"px","--r":R(-720,720)+"deg","--d":R(1.2,2.2)+"s"},{background:`hsl(${R(0,360)},90%,60%)`});}}
+  if(kind==="card")for(let i=0;i<10;i++){const a=R(0,6.28),r=R(140,240);add("burst","🃏",{"--tx":Math.cos(a)*r+"px","--ty":Math.sin(a)*r+"px","--r":R(-360,360)+"deg","--d":R(1,1.6)+"s"});}
+}
 function showEvent(e,ms){
   const p=byId(e.pid);const el=$("#event");
-  el.innerHTML=`<div class="big">${esc(e.icon)}</div><div class="ttl">${esc(e.title)}</div><div class="muted">${esc(p?p.name:"")}</div><div>${esc(e.text||"")}</div>`;
-  el.classList.add("show");
-  if(mounted3D){const k=fxOf(e);const m=(e.text||"").match(/[+-][\d,]+万円/g);if(k)B3.effect(e.pid,k,m?m[m.length-1]:"");}
-  return wait(ms||1900).then(()=>{el.classList.remove("show");return wait(200);});
+  const kind=e.title?evKind(e):"info";const [c1,c2]=EV_COLORS[kind]||EV_COLORS.info;
+  const amts=(e.text||"").match(/[+-][\d,]+万円/g);const amt=amts?amts[amts.length-1]:"";
+  const chips=[...(e.text||"").matchAll(/(センス|体力|知力|魅力|好感度)\s?([+-]\d+)/g)].map((m,i)=>`<span class="chip ${m[2][0]==="-"?"down":""}" style="animation-delay:${.35+i*.12}s">${m[1]} ${m[2]}</span>`).join("");
+  el.className="event "+kind;el.style.setProperty("--c1",c1);el.style.setProperty("--c2",c2);
+  el.innerHTML=`<div class="ev-band"><div class="ev-icon">${esc(e.icon||"✨")}</div>${e.title?`<div class="ev-ttl">${esc(e.title)}</div>`:""}</div>
+    <div class="ev-body"><div class="ev-who">${p?`<span class="dot" style="display:inline-block;vertical-align:middle;background:${p.color}"></span> ${esc(p.name)}`:""}</div>
+    ${amt?`<div class="ev-amt ${amt[0]==="+"?"plus":"minus"}">${esc(amt)}</div>`:""}
+    ${chips?`<div class="chips">${chips}</div>`:""}
+    <div>${esc(e.text||"")}</div></div>`;
+  void el.offsetWidth;el.classList.add("show");particles(kind);
+  if(mounted3D){const k={gain:"gain",loss:"loss",party:"party",job:"party",love:"party"}[kind];if(k)B3.effect(e.pid,k,amt);}
+  return wait(ms||2300).then(()=>{el.classList.remove("show");el.classList.add("hide");return wait(260);}).then(()=>{el.classList.remove("hide");});
 }
 
 function lobbyView(){
@@ -661,11 +889,11 @@ function lobbyView(){
 }
 
 const TW=64,TH=74,PAD=36;
-function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+n.y*TH;}
-const TYPE_COLOR={card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
+function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+(n.y+1.2)*TH;}
+const TYPE_COLOR={choice:"#d0ebff",meet:"#ffdeeb",date:"#fcc2d7",propose:"#faa2c1",jobchange:"#a5d8ff",start:"#ffe3e3",card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
 function gameShell(){
   const app=$("#app");
-  const W=PAD*2+11*TW,H=PAD*2+11.5*TH+18;
+  const W=PAD*2+11*TW,H=PAD*2+12.7*TH+18;
   let lines="",tiles="";
   for(const n of Object.values(N))for(const m of n.next.map(id=>N[id]))lines+=`<line x1="${tx(n)}" y1="${ty(n)}" x2="${tx(m)}" y2="${ty(m)}" stroke="var(--line)" stroke-width="8" stroke-linecap="round"/>`;
   for(const n of Object.values(N)){
@@ -718,7 +946,7 @@ function drawTokens(){
   const g=$("#tokens");if(!g)return;
   if(mounted3D){
     const focus=animFocus||(V.phase==="play"?V.players[V.turn].id:null);
-    B3.setPositions(V.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,children:p.children};}),focus);
+    B3.setPositions(V.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,spouse:p.spouse,children:p.children};}),focus);
   }
   const groups={};
   V.players.forEach((p,i)=>{const pos=animPos[p.id]||p.pos;(groups[pos]=groups[pos]||[]).push({p,i});});
@@ -734,6 +962,8 @@ function drawSide(){
     <div class="top"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.id===myId?' <span class="tag">あなた</span>':""}${p.cpu?' <span class="tag">CPU</span>':""}${!p.online&&!p.cpu?' <span class="tag">切断中</span>':""}
       <span class="money ${p.money<0?"neg":""}">${man(p.money)}</span></div>
     <div class="muted">${p.job?(p.job.icon||"")+esc(p.job.name)+"（給料 "+man(p.job.salary)+"）":"無職"}${p.married?"・既婚":""}${p.children?"・子ども"+p.children+"人":""}${p.house?"・"+esc(p.house.name):""}${p.retired?"・🏁ゴール済み":""}・${["こども","わかもの","おとな","シニア"][N[animPos[p.id]||p.pos].age]}</div>
+    <div class="stats">${Object.keys(ST).map(k=>`<span title="${ST[k]}">${ST_ICON[k]}${ST[k]} <b>${p.st?p.st[k]:0}</b></span>`).join("")}</div>
+    <div class="muted">${p.married?"💍 "+esc(PARTNERS[p.spouse].name)+" と結婚":p.love?"💘 "+esc(PARTNERS[p.love.who].name)+" とデート中・好感度 <b>"+p.love.aff+"</b>":"💘 恋人なし"}</div>
     <div class="muted">🃏カード ${(p.hand||[]).length}枚${p.shield?"・🛡️保険中":""}${p.bonus?"・💴ボーナス待ち":""}${p.blocked?"・⛔通せんぼされ中":""}</div></div>`).join("");
   $("#log").innerHTML=V.log.map(t=>`<div>${esc(t)}</div>`).join("");
   drawControls();
@@ -744,7 +974,7 @@ function drawControls(){
     const ranked=V.players.slice().sort((a,b)=>b.score-a.score);
     c.innerHTML=`<div class="result"><div class="who">🎉 結果発表</div>${ranked.map((p,i)=>`<div class="r"><span class="rank">${i+1}</span><span class="dot" style="background:${p.color}"></span><span>${esc(p.name)}</span><span class="money" style="margin-left:auto;font-weight:700">${man(p.score)}</span></div>`).join("")}
       ${isHost?'<button id="again">同じメンバーでもう一回</button>':'<div class="muted">ホストがもう一回を選ぶと再スタートします。</div>'}</div>`;
-    if(isHost)$("#again").onclick=()=>{S.players.forEach(p=>Object.assign(p,{pos:"S",money:200,job:null,children:0,married:false,house:null,retired:false,score:null}));
+    if(isHost)$("#again").onclick=()=>{S.players.forEach(p=>Object.assign(p,freshLife()));
       S.players.forEach(dealStart);Object.assign(S,{phase:"play",turn:0,stage:"spin",pending:null,retired:0,log:["もう一回スタート！"]});commit();};
     return;
   }
@@ -753,7 +983,9 @@ function drawControls(){
   if(animating)h+=`<div class="muted">…</div>`;
   else if(mine&&V.stage==="spin")h+=`<button id="spin" style="width:100%;font-size:18px">ルーレットを回す</button>`+handHtml(p);
   else if(mine&&V.stage==="branch"){const n=N[p.pos];h+=`<div class="muted">あと ${V.pending.remaining} マス。どっちに進む？</div><div class="choices">${n.next.map((id,i)=>`<button data-br="${id}">${esc(n.labels[i])}</button>`).join("")}</div>`;}
-  else if(mine&&V.stage==="job")h+=`<div class="muted">どの夢に挑戦する？</div><div class="choices">${DREAMS.map((d,i)=>`<button data-j="${i}">${d.icon} ${esc(d.name)}（給料 ${man(d.salary)}）</button>`).join("")}</div>`;
+  else if(V.stage==="choice"&&V.choice){const ch=V.choice;
+    if(mine)h+=`<div class="muted">「${esc(ch.title)}」を選んでください</div><button id="reopen" class="ghost">選択画面を開く</button>`;
+    else{h+=`<div class="muted">${esc(p.name)} が「${esc(ch.title)}」を選んでいます…</div>`;if(isHost&&!p.cpu)h+=`<button class="ghost" id="proxy" style="margin-top:6px">${esc(p.name)} の代わりに選ぶ</button>`;}}
   else if(mine&&V.stage==="house")h+=`<div class="muted">家を買いますか？（所持金 ${man(p.money)}・足りなければ借金）</div><div class="choices">${HOUSES.map((x,i)=>`<button data-h="${i}">${esc(x.name)}（${man(x.cost)}）</button>`).join("")}<button class="ghost" data-h="-1">買わない</button></div>`;
   else{h+=`<div class="muted">${p.cpu?"CPUが考えています…":"待っています…"}</div>`;
     if(isHost&&!p.cpu)h+=`<button class="ghost" id="proxy" style="margin-top:6px">${esc(p.name)} の代わりに進める</button>`;}
@@ -763,7 +995,8 @@ function drawControls(){
   const send=a=>{if(isHost)act(myId,a);else Net.send({t:"act",a});};
   const sb=$("#spin");if(sb)sb.onclick=()=>{sb.disabled=true;send({type:"spin"});};
   c.querySelectorAll("[data-br]").forEach(b=>b.onclick=()=>send({type:"branch",to:b.dataset.br}));
-  c.querySelectorAll("[data-j]").forEach(b=>b.onclick=()=>send({type:"job",idx:+b.dataset.j}));
+  drawChoiceModal(mine&&!animating&&V.stage==="choice"?V.choice:null,send);
+  const ro=$("#reopen");if(ro)ro.onclick=()=>{choiceHidden=false;drawControls();};
   c.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>send({type:"house",idx:+b.dataset.h}));
   const px=$("#proxy");if(px)px.onclick=()=>botAct(p.id);
   c.querySelectorAll("[data-card]").forEach(b=>b.onclick=()=>{
@@ -774,7 +1007,21 @@ function drawControls(){
   c.querySelectorAll("[data-num]").forEach(b=>b.onclick=()=>{const k=cardSel;cardSel=null;send({type:"card",card:k,num:+b.dataset.num});});
   const cx=$("#cardCancel");if(cx)cx.onclick=()=>{cardSel=null;drawControls();};
 }
-let cardSel=null;
+let cardSel=null,choiceHidden=false,choiceShown=null;
+// 自分の選択肢は画面中央のカードで出す
+function drawChoiceModal(ch,send){
+  const m=$("#choiceModal");
+  const key=ch?ch.title+"|"+V.seq:null;
+  if(key!==choiceShown){choiceHidden=false;choiceShown=key;}
+  if(!ch||choiceHidden){m.classList.remove("show");return;}
+  m.innerHTML=`<div class="cm card"><div class="cm-icon">${esc(ch.icon||"❓")}</div><div class="cm-title">${esc(ch.title)}</div>
+    ${ch.text?`<div class="muted">${esc(ch.text)}</div>`:""}
+    <div class="cm-opts">${ch.opts.map((o,i)=>`<button class="cm-opt" data-ch="${i}" ${o.disabled?"disabled":""} style="animation-delay:${i*60}ms"><b>${esc(o.label)}</b>${o.desc?`<small>${esc(o.desc)}</small>`:""}</button>`).join("")}</div>
+    <button class="ghost cm-hide" id="cmHide">盤面を見る</button></div>`;
+  m.classList.add("show");
+  m.querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{m.classList.remove("show");send({type:"choose",idx:+b.dataset.ch});});
+  $("#cmHide").onclick=()=>{choiceHidden=true;m.classList.remove("show");};
+}
 function handHtml(p,viewOnly){
   const hand=p.hand||[];
   if(!viewOnly&&cardSel&&hand.includes(cardSel)){

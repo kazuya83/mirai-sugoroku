@@ -4,7 +4,7 @@ import * as THREE from "./vendor/three.module.min.js";
 
 const SP = 2.2; // マスの間隔
 const wx = n => (n.x - 5.5) * SP;
-const wz = n => (n.y - 5.75) * SP;
+const wz = n => (n.y - 5.15) * SP;
 
 let renderer, scene, camera, clock, container, nodes;
 let mode = "follow";           // "follow" | "all"
@@ -52,9 +52,9 @@ function buildWorld(typeColor) {
   Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 80 });
   scene.add(sun);
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 76), new THREE.MeshStandardMaterial({ color: "#8fce6b" }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshStandardMaterial({ color: "#8fce6b" }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(28.5, 0.2, 29.5), new THREE.MeshStandardMaterial({ color: "#f6e7c8" }));
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(28.5, 0.2, 32.5), new THREE.MeshStandardMaterial({ color: "#f6e7c8" }));
   pad.position.set(0, 0.1, 0); pad.receiveShadow = true; scene.add(pad);
 
   // 道
@@ -91,8 +91,8 @@ function buildWorld(typeColor) {
   const trunk = new THREE.MeshStandardMaterial({ color: "#8a5a3b" });
   const leafMats = ["#3f9d4a", "#57b45c", "#2f8a3e"].map(c => new THREE.MeshStandardMaterial({ color: c }));
   for (let i = 0; i < 70; i++) {
-    const x = (r() - 0.5) * 64, z = (r() - 0.5) * 64;
-    if (Math.abs(x) < 15.5 && Math.abs(z) < 16) continue;
+    const x = (r() - 0.5) * 66, z = (r() - 0.5) * 70;
+    if (Math.abs(x) < 15.5 && Math.abs(z) < 17.5) continue;
     const t = new THREE.Group();
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8), trunk); tr.position.y = 0.4;
     const s = 0.8 + r() * 0.8;
@@ -101,7 +101,7 @@ function buildWorld(typeColor) {
     t.add(tr, lf); t.position.set(x, 0, z); scene.add(t);
   }
   const houseCols = ["#ff8787", "#74c0fc", "#ffd43b", "#b197fc"];
-  [[-19, -18], [18, -19], [-20, 17], [19, 18], [0, -19], [3, 20], [-21, 4], [21, -3]].forEach(([x, z], i) => {
+  [[-19, -21], [18, -22], [-20, 20], [19, 21], [0, -22], [3, 22], [-21, 4], [21, -3]].forEach(([x, z], i) => {
     const h = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 2), new THREE.MeshStandardMaterial({ color: "#fff4e6" })); body.position.y = 0.75;
     const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.2, 4), new THREE.MeshStandardMaterial({ color: houseCols[i % 4] }));
@@ -158,7 +158,8 @@ function makeFamily(p, idx) {
   const me = person(p.color, HAIRS[idx % HAIRS.length], p.age);
   g.add(me);
   if (p.married) {
-    const pt = person(PARTNER_SHIRT[idx % 6], HAIRS[(idx + 3) % 6], p.age, "#5c5f66");
+    const sp = p.spouse != null ? p.spouse : idx;
+    const pt = person(PARTNER_SHIRT[sp % 6], HAIRS[(sp + 3) % 6], p.age, "#5c5f66");
     pt.scale.multiplyScalar(0.92); pt.position.set(0.42, 0, -0.12); g.add(pt);
   }
   const kids = Math.min(p.children || 0, 4);
@@ -193,7 +194,7 @@ function animate() {
   else marker.visible = false;
   let tp, tl;
   if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 0.5, g.z); tp = new THREE.Vector3(g.x, 9, g.z + 9.5); }
-  else { tl = new THREE.Vector3(0, 0, 1.5); tp = new THREE.Vector3(0, 31, 24); }
+  else { tl = new THREE.Vector3(0, 0, 1.5); tp = new THREE.Vector3(0, 34, 26); }
   const a = 1 - Math.exp(-dt * 3);
   camPos.lerp(tp, a); camLook.lerp(tl, a);
   camera.position.copy(camPos); camera.lookAt(camLook);
