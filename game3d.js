@@ -3,8 +3,9 @@
 import * as THREE from "./vendor/three.module.min.js";
 
 const SP = 2.2; // マスの間隔
-const wx = n => (n.x - 5.5) * SP;
-const wz = n => (n.y - 4.55) * SP;
+let CX = 5.5, CY = 4.55; // 盤面の中心（mount時にコースの範囲から決める）
+const wx = n => (n.x - CX) * SP;
+const wz = n => (n.y - CY) * SP;
 
 let renderer, scene, camera, clock, container, nodes;
 let mode = "follow";           // "follow" | "all"
@@ -12,7 +13,8 @@ let focusId = null;
 const tokens = new Map();      // id -> {group, from, to, t0, dur, hop, rig}
 const particles = [];
 const camPos = new THREE.Vector3(0, 34, 26), camLook = new THREE.Vector3(0, 0, 1);
-let marker, water;
+let marker, water, sun, bounds, loop;
+const cars = [];
 
 // ---------- テクスチャ（画像素材は使わず canvas で描く） ----------
 function canvasTex(w, h, draw, repeat) {
@@ -100,7 +102,7 @@ function roundedBox(w, h, d, r, mat) {
 
 // ---------- 世界 ----------
 function buildSky() {
-  const geo = new THREE.SphereGeometry(140, 32, 16);
+  const geo = new THREE.SphereGeometry(320, 32, 16);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false,
     uniforms: { top: { value: new THREE.Color("#4a9be8") }, bottom: { value: new THREE.Color("#e8f4ff") } },
@@ -117,45 +119,64 @@ function buildWorld(typeColor) {
   const sunBall = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.5, 4.5) }));
   sunBall.position.set(-60, 90, 40); envScene.add(sunBall);
   scene.environment = pm.fromScene(envScene, 0.04).texture;
-  scene.fog = new THREE.Fog("#dcecf7", 60, 130);
+  scene.fog = new THREE.Fog("#dcecf7", 90, 230);
 
   scene.add(new THREE.HemisphereLight("#dff1ff", "#6b8f4a", 0.6));
-  const sun = new THREE.DirectionalLight("#fff1d6", 2.6);
-  sun.position.set(-18, 30, 14); sun.castShadow = true;
+  sun = new THREE.DirectionalLight("#fff1d6", 2.6);
+  sun.castShadow = true;
   sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
-  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 90 });
-  scene.add(sun);
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
+  scene.add(sun); scene.add(sun.target);
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), new THREE.MeshStandardMaterial({ map: grassTex(), roughness: 0.95 }));
-  ground.material.map.repeat.set(36, 36);
+  // 町の範囲
+  const xs = Object.values(nodes).map(wx), zs = Object.values(nodes).map(wz);
+  const X0 = Math.min(...xs) - 6, X1 = Math.max(...xs) + 6, Z0 = Math.min(...zs) - 6, Z1 = Math.max(...zs) + 6;
+  const TM = 14; // 町の外側の幅
+  bounds = { X0, X1, Z0, Z1 };
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ map: grassTex(), roughness: 0.95 }));
+  ground.material.map.repeat.set(80, 80);
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  // 木のテーブル（盤）
-  const table = roundedBox(29.5, 0.5, 36, 0.6, new THREE.MeshPhysicalMaterial({ map: woodTex(), roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.4 }));
-  table.position.y = -0.15; table.receiveShadow = table.castShadow = true; scene.add(table);
+  // 歩道（町の地面）
+  const pave = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0 + TM * 2, Z1 - Z0 + TM * 2), new THREE.MeshStandardMaterial({ map: paveTex(), roughness: 0.9 }));
+  pave.material.map.repeat.set((X1 - X0 + TM * 2) / 3, (Z1 - Z0 + TM * 2) / 3);
+  pave.rotation.x = -Math.PI / 2; pave.position.set((X0 + X1) / 2, 0.01, (Z0 + Z1) / 2); pave.receiveShadow = true; scene.add(pave);
 
-  // 道（石畳）
-  const roadMat = new THREE.MeshStandardMaterial({ map: stoneTex(), roughness: 0.9 });
-  for (const n of Object.values(nodes)) for (const id of n.next) {
-    const m = nodes[id]; const dx = wx(m) - wx(n), dz = wz(m) - wz(n); const len = Math.hypot(dx, dz);
-    const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.6), roadMat);
-    road.position.set((wx(n) + wx(m)) / 2, 0.38, (wz(n) + wz(m)) / 2);
-    road.rotation.y = -Math.atan2(dz, dx); road.receiveShadow = true; scene.add(road);
-  }
+  // 道路：すごろくのコースそのものが町の道。白い破線つきのアスファルト。
+  const segs = [];
+  const rTex = roadTex();
+  const addRoad = (x1, z1, x2, z2, w, y) => {
+    const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+    const t = rTex.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(len / 2.2)), 1);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(len + w * 0.5, w), new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(dz, dx);
+    m.position.set((x1 + x2) / 2, y || 0.03, (z1 + z2) / 2); m.receiveShadow = true; scene.add(m);
+    segs.push([x1, z1, x2, z2, w / 2]);
+  };
+  for (const n of Object.values(nodes)) for (const id of n.next) { const m = nodes[id]; addRoad(wx(n), wz(n), wx(m), wz(m), 2.3); }
+  // 町をぐるっと回る外周道路（車が走る）
+  loop = [[X0 - 2, Z0 - 2], [X1 + 2, Z0 - 2], [X1 + 2, Z1 + 2], [X0 - 2, Z1 + 2]];
+  for (let i = 0; i < 4; i++) { const a = loop[i], b = loop[(i + 1) % 4]; addRoad(a[0], a[1], b[0], b[1], 3, 0.025); }
+  // 外側の通り
+  for (const z of [Z0 - 2 - 9, Z1 + 2 + 9]) addRoad(X0 - TM, z, X1 + TM, z, 2.6, 0.025);
+  for (const x of [X0 - 2 - 9, X1 + 2 + 9]) addRoad(x, Z0 - TM, x, Z1 + TM, 2.6, 0.025);
+
   // マス（つやのあるボードゲームの駒のような質感）
+  const BASE = 0.06;
   for (const n of Object.values(nodes)) {
     const neg = n.type === "money" && n.amount < 0;
     const fill = typeColor[n.type] || (neg ? "#ffd6d6" : "#d3f9d8");
-    const h = n.stop ? 0.62 : 0.4;
+    const h = n.stop ? 0.42 : 0.24;
     const col = new THREE.Color(fill).multiplyScalar(0.85);
     const body = roundedBox(1.72, h, 1.72, 0.22, new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 }));
-    body.position.set(wx(n), 0.35, wz(n)); body.castShadow = body.receiveShadow = true; scene.add(body);
+    body.position.set(wx(n), BASE, wz(n)); body.castShadow = body.receiveShadow = true; scene.add(body);
     const top = new THREE.Mesh(new THREE.PlaneGeometry(1.62, 1.62), new THREE.MeshPhysicalMaterial({ map: tileTexture(n, fill), transparent: true, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.15 }));
-    top.rotation.x = -Math.PI / 2; top.position.set(wx(n), 0.35 + h + 0.005, wz(n)); top.receiveShadow = true; scene.add(top);
+    top.rotation.x = -Math.PI / 2; top.position.set(wx(n), BASE + h + 0.005, wz(n)); top.receiveShadow = true; scene.add(top);
     if (n.stop) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.07, 10, 48), new THREE.MeshStandardMaterial({ color: "#f76707", metalness: 0.6, roughness: 0.3 }));
-      ring.rotation.x = Math.PI / 2; ring.position.set(wx(n), 0.42, wz(n)); ring.castShadow = true; scene.add(ring);
+      ring.rotation.x = Math.PI / 2; ring.position.set(wx(n), BASE + 0.07, wz(n)); ring.castShadow = true; scene.add(ring);
     }
-    n._top = 0.35 + h;
+    n._top = BASE + h;
     if (n.type === "goal") {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 12), new THREE.MeshStandardMaterial({ color: "#ced4da", metalness: 0.9, roughness: 0.2 }));
       pole.position.set(wx(n) + 0.65, n._top + 1.3, wz(n) - 0.65); pole.castShadow = true; scene.add(pole);
@@ -164,62 +185,196 @@ function buildWorld(typeColor) {
       n._flag = flag;
     }
   }
-  // まわりの景色：木・しげみ・花・岩・家・池・雲
+
+  // ---------- 建物の配置：道路から離れた空き地に、家・お店・マンション・ビルを建てる ----------
   const r = rng(42);
-  const free = (x, z) => !(Math.abs(x) < 16.5 && Math.abs(z) < 19.5);
-  const trunk = new THREE.MeshStandardMaterial({ color: "#7a4e2d", roughness: 0.9 });
-  const leaf = ["#3f8f3a", "#4f9e45", "#2f7a33", "#6aa84f"].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, flatShading: true }));
-  for (let i = 0; i < 140; i++) {
-    const x = (r() - 0.5) * 110, z = (r() - 0.5) * 110; if (!free(x, z)) continue;
-    const t = new THREE.Group(); const s = 0.8 + r() * 1.1;
-    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * s, 0.22 * s, 1.4 * s, 7), trunk); tr.position.y = 0.7 * s; tr.castShadow = true; t.add(tr);
-    if (r() < 0.4) { // 針葉樹
-      for (let k = 0; k < 3; k++) { const c = new THREE.Mesh(new THREE.ConeGeometry((1.2 - k * 0.3) * s, 1.4 * s, 8), leaf[2]); c.position.y = (1.5 + k * 0.75) * s; c.castShadow = true; t.add(c); }
-    } else { // 広葉樹：かたまりを重ねる
-      for (let k = 0; k < 5; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry((0.6 + r() * 0.4) * s, 1), leaf[(i + k) % 4]); b.position.set((r() - 0.5) * 1.1 * s, (1.8 + r() * 0.8) * s, (r() - 0.5) * 1.1 * s); b.castShadow = true; t.add(b); }
+  const segDist = (x, z) => {
+    let best = 1e9;
+    for (const [x1, z1, x2, z2, hw] of segs) {
+      const dx = x2 - x1, dz = z2 - z1, l2 = dx * dx + dz * dz;
+      let t = l2 ? ((x - x1) * dx + (z - z1) * dz) / l2 : 0; t = Math.max(0, Math.min(1, t));
+      const d = Math.hypot(x - (x1 + t * dx), z - (z1 + t * dz)) - hw;
+      if (d < best) best = d;
     }
-    t.position.set(x, 0, z); t.rotation.y = r() * 6; scene.add(t);
+    return best;
+  };
+  const inner = (x, z) => x > X0 && x < X1 && z > Z0 && z < Z1;
+  const cands = [];
+  for (let x = X0 - TM + 1; x < X1 + TM - 1; x += 0.7) for (let z = Z0 - TM + 1; z < Z1 + TM - 1; z += 0.7) {
+    const d = segDist(x, z); if (d < 0.9) continue;
+    cands.push({ x, z, d, k: r() });
   }
-  const bushM = new THREE.MeshStandardMaterial({ color: "#4c9a3f", roughness: 0.85, flatShading: true });
-  const flowerCols = ["#ff6b6b", "#ffd43b", "#ffffff", "#da77f2", "#4dabf7"];
-  for (let i = 0; i < 90; i++) {
-    const x = (r() - 0.5) * 70, z = (r() - 0.5) * 76; if (!free(x, z)) continue;
-    if (r() < 0.5) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + r() * 0.5, 1), bushM); b.position.set(x, 0.2, z); b.scale.y = 0.7; b.castShadow = true; scene.add(b); }
-    else { for (let k = 0; k < 6; k++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshStandardMaterial({ color: flowerCols[(i + k) % 5], roughness: 0.6 })); f.position.set(x + (r() - 0.5), 0.12, z + (r() - 0.5)); scene.add(f); } }
+  cands.sort((a, b) => b.d - a.d || a.k - b.k);
+  const placed = [];
+  const kinds = { house: [], shop: [], apt: [], office: [], tall: [], tree: [], lamp: [] };
+  const RAD = { house: 1.05, shop: 1.1, apt: 1.35, office: 1.5, tall: 1.5, tree: 0.6 };
+  const free = (x, z, rad) => { for (const p of placed) if (Math.hypot(p.x - x, p.z - z) < p.rad + rad) return false; return true; };
+  for (const c of cands) {
+    let kind;
+    if (inner(c.x, c.z)) { const q = r(); kind = q < 0.55 ? "house" : q < 0.75 ? "shop" : q < 0.88 ? "apt" : "tree"; }
+    else if (c.z > Z1) kind = r() < 0.7 ? "house" : "tree"; // 手前（カメラ側）は低い建物
+    else { const q = r(); kind = q < 0.35 ? "apt" : q < 0.65 ? "office" : q < 0.85 ? "tall" : "tree"; }
+    let rad = RAD[kind];
+    if (c.d < rad + 0.25) { if (c.d >= 0.85 && kind !== "tree") { kind = "tree"; rad = RAD.tree; } else continue; }
+    if (!free(c.x, c.z, rad)) continue;
+    // 正面を一番近い道路に向ける
+    let ang = 0, bd = 1e9;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const d = segDist(c.x + dx * 1.5, c.z + dz * 1.5); if (d < bd) { bd = d; ang = Math.atan2(dx, dz); } }
+    placed.push({ x: c.x, z: c.z, rad });
+    kinds[kind].push({ x: c.x, z: c.z, ang, s: 0.9 + r() * 0.25, c: r() });
   }
-  const rockM = new THREE.MeshStandardMaterial({ color: "#9a9a93", roughness: 0.95, flatShading: true });
-  for (let i = 0; i < 25; i++) { const x = (r() - 0.5) * 80, z = (r() - 0.5) * 80; if (!free(x, z)) continue; const k = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + r() * 0.6, 0), rockM); k.position.set(x, 0.15, z); k.rotation.set(r(), r(), r()); k.castShadow = true; scene.add(k); }
-  const roofCols = ["#c0392b", "#2f6fa7", "#d68910", "#7d5ba6", "#2e8b57"];
-  [[-21, -23], [19, -24], [-22, 22], [21, 23], [0, -25], [4, 25], [-24, 4], [24, -3], [-26, -12], [26, 12]].forEach(([x, z], i) => scene.add(house(x, z, roofCols[i % 5], r)));
-  water = new THREE.Mesh(new THREE.CircleGeometry(4, 48), new THREE.MeshPhysicalMaterial({ color: "#3b8fd1", roughness: 0.05, metalness: 0.1, clearcoat: 1, transparent: true, opacity: 0.88 }));
-  water.rotation.x = -Math.PI / 2; water.position.set(-26, 0.04, -4); water.receiveShadow = true; scene.add(water);
-  const shore = new THREE.Mesh(new THREE.RingGeometry(4, 4.6, 48), new THREE.MeshStandardMaterial({ color: "#c9b48a", roughness: 1 }));
-  shore.rotation.x = -Math.PI / 2; shore.position.set(-26, 0.03, -4); scene.add(shore);
+  // 街灯：コースの道沿い
+  for (const n of Object.values(nodes)) for (const id of n.next) {
+    if (r() > 0.45) continue;
+    const m = nodes[id]; const dx = wx(m) - wx(n), dz = wz(m) - wz(n), l = Math.hypot(dx, dz) || 1;
+    for (const sgn of [1, -1]) {
+      const x = (wx(n) + wx(m)) / 2 - dz / l * 1.45 * sgn, z = (wz(n) + wz(m)) / 2 + dx / l * 1.45 * sgn;
+      if (segDist(x, z) > 0.2 && free(x, z, 0.3)) { placed.push({ x, z, rad: 0.3 }); kinds.lamp.push({ x, z, ang: 0, s: 1 }); break; }
+    }
+  }
+  const dummy = new THREE.Object3D();
+  const inst = (geo, mat, list, f, shadow) => {
+    if (!list.length) return;
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((b, i) => { f(dummy, b, i); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); if (b._col) im.setColorAt(i, b._col); });
+    im.castShadow = shadow !== false; im.receiveShadow = true; scene.add(im);
+  };
+  const place = (o, b, y, sx, sy, sz) => { o.position.set(b.x, y, b.z); o.rotation.set(0, b.ang, 0); o.scale.set(sx, sy, sz); };
+  // 家
+  const roofCols = ["#c0392b", "#2f6fa7", "#d68910", "#7d5ba6", "#2e8b57", "#8d5524", "#5c6b73"].map(c => new THREE.Color(c));
+  const wallCols = ["#f4ead8", "#fff4e0", "#e8f0f7", "#f7e1d7", "#eef5e9"].map(c => new THREE.Color(c));
+  const hs = kinds.house;
+  hs.forEach(b => b._col = wallCols[Math.floor(b.c * 5)]);
+  inst(new THREE.BoxGeometry(1.7, 1.3, 1.5), new THREE.MeshStandardMaterial({ map: houseTex(), roughness: 0.85 }), hs, (o, b) => place(o, b, 0.65 * b.s, b.s, b.s, b.s));
+  const roofGeo = new THREE.CylinderGeometry(0.01, 1.3, 0.9, 4, 1); roofGeo.rotateY(Math.PI / 4); roofGeo.scale(1.0, 1, 0.9);
+  hs.forEach(b => b._col = roofCols[Math.floor(b.c * 7)]);
+  inst(roofGeo, new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.6 }), hs, (o, b) => place(o, b, (1.3 + 0.45) * b.s, b.s, b.s, b.s));
+  // お店（ひさしつき）
+  const sh = kinds.shop;
+  sh.forEach(b => b._col = wallCols[Math.floor(b.c * 5)]);
+  inst(new THREE.BoxGeometry(1.9, 1.6, 1.7), new THREE.MeshStandardMaterial({ map: shopTex(), roughness: 0.7 }), sh, (o, b) => place(o, b, 0.8, 1, 1, 1));
+  const awnCols = ["#e03131", "#1c7ed6", "#f59f00", "#2f9e44", "#ae3ec9"].map(c => new THREE.Color(c));
+  sh.forEach(b => b._col = awnCols[Math.floor(b.c * 5)]);
+  const awnGeo = new THREE.BoxGeometry(1.9, 0.08, 0.6); awnGeo.rotateX(0.35); awnGeo.translate(0, 0, 1.05);
+  inst(awnGeo, new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.6 }), sh, (o, b) => place(o, b, 1.15, 1, 1, 1));
+  inst(new THREE.BoxGeometry(2.0, 0.12, 1.8), new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.6 }), sh, (o, b) => place(o, b, 1.66, 1, 1, 1));
+  // マンション
+  const apCols = ["#f1e3d3", "#dfe7ef", "#f3d9c4", "#e6e1f0", "#d9e8dc"].map(c => new THREE.Color(c));
+  kinds.apt.forEach(b => b._col = apCols[Math.floor(b.c * 5)]);
+  inst(new THREE.BoxGeometry(2.3, 3.6, 2.3), new THREE.MeshStandardMaterial({ map: aptTex(), roughness: 0.8 }), kinds.apt, (o, b) => place(o, b, 1.8, 1, 1, 1));
+  // オフィスビル（2種類の高さ）
+  const glass = (h) => new THREE.MeshPhysicalMaterial({ map: officeTex(h), roughness: 0.25, metalness: 0.3, clearcoat: 0.6 });
+  const ofCols = ["#ffffff", "#e3f2ff", "#e9fbe9", "#fff3e0"].map(c => new THREE.Color(c));
+  kinds.office.forEach(b => b._col = ofCols[Math.floor(b.c * 4)]);
+  kinds.tall.forEach(b => b._col = ofCols[Math.floor(b.c * 4)]);
+  inst(new THREE.BoxGeometry(2.6, 6, 2.6), glass(6), kinds.office, (o, b) => place(o, b, 3, 1, 1, 1));
+  inst(new THREE.BoxGeometry(2.6, 10, 2.6), glass(10), kinds.tall, (o, b) => place(o, b, 5, 1, 1, 1));
+  // 木
+  const trees = kinds.tree;
+  trees.forEach(b => b._col = null);
+  inst(new THREE.CylinderGeometry(0.1, 0.16, 1, 7), new THREE.MeshStandardMaterial({ color: "#7a4e2d", roughness: 0.9 }), trees, (o, b) => place(o, b, 0.5 * b.s, b.s, b.s, b.s));
+  const leafCols = ["#3f8f3a", "#4f9e45", "#2f7a33", "#6aa84f"].map(c => new THREE.Color(c));
+  trees.forEach(b => b._col = leafCols[Math.floor(b.c * 4)]);
+  inst(new THREE.IcosahedronGeometry(0.62, 1), new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.8, flatShading: true }), trees, (o, b) => place(o, b, 1.35 * b.s, b.s, b.s * 1.1, b.s));
+  inst(new THREE.IcosahedronGeometry(0.45, 1), new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.8, flatShading: true }), trees, (o, b) => { place(o, b, 1.85 * b.s, b.s, b.s, b.s); o.position.x += 0.12; });
+  // 街灯
+  const lamps = kinds.lamp; lamps.forEach(b => b._col = null);
+  inst(new THREE.CylinderGeometry(0.04, 0.05, 1.8, 6), new THREE.MeshStandardMaterial({ color: "#495057", metalness: 0.7, roughness: 0.4 }), lamps, (o, b) => place(o, b, 0.9, 1, 1, 1));
+  inst(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshStandardMaterial({ color: "#fff8e1", emissive: "#ffe8a3", emissiveIntensity: 0.8 }), lamps, (o, b) => place(o, b, 1.85, 1, 1, 1), false);
+
+  // 外側の森・池・雲
+  const outer = (x, z) => x < X0 - TM - 1 || x > X1 + TM + 1 || z < Z0 - TM - 1 || z > Z1 + TM + 1;
+  const forest = [];
+  for (let i = 0; i < 900 && forest.length < 260; i++) {
+    const x = (X0 + X1) / 2 + (r() - 0.5) * (X1 - X0 + TM * 2 + 70), z = (Z0 + Z1) / 2 + (r() - 0.5) * (Z1 - Z0 + TM * 2 + 70);
+    if (outer(x, z)) forest.push({ x, z, ang: r() * 6, s: 1.2 + r() * 1.3, c: r() });
+  }
+  forest.forEach(b => b._col = null);
+  inst(new THREE.CylinderGeometry(0.1, 0.16, 1, 7), new THREE.MeshStandardMaterial({ color: "#7a4e2d", roughness: 0.9 }), forest, (o, b) => place(o, b, 0.5 * b.s, b.s, b.s, b.s));
+  forest.forEach(b => b._col = leafCols[Math.floor(b.c * 4)]);
+  inst(new THREE.ConeGeometry(0.8, 1.8, 8), new THREE.MeshStandardMaterial({ color: "#fff", roughness: 0.8, flatShading: true }), forest, (o, b) => place(o, b, 1.7 * b.s, b.s, b.s, b.s));
+  water = new THREE.Mesh(new THREE.CircleGeometry(7, 48), new THREE.MeshPhysicalMaterial({ color: "#3b8fd1", roughness: 0.05, metalness: 0.1, clearcoat: 1, transparent: true, opacity: 0.88 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(X0 - TM - 9, 0.04, (Z0 + Z1) / 2); water.receiveShadow = true; scene.add(water);
   const cloudM = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, transparent: true, opacity: 0.92 });
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 12; i++) {
     const c = new THREE.Group();
     for (let k = 0; k < 5; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(1.5 + r() * 1.5, 12, 10), cloudM); b.position.set(k * 1.8 - 3.6, r() * 0.8, (r() - 0.5) * 1.5); b.scale.y = 0.6; c.add(b); }
-    c.position.set((r() - 0.5) * 120, 26 + r() * 10, -30 - r() * 60); c.userData.cloud = 0.3 + r() * 0.5; scene.add(c);
+    c.position.set((r() - 0.5) * 160, 34 + r() * 12, Z0 - 20 - r() * 70); c.userData.cloud = 0.3 + r() * 0.5; scene.add(c);
+  }
+  // 外周道路を走る車
+  const carCols = ["#e03131", "#1971c2", "#f2f2f2", "#fab005", "#2b8a3e", "#343a40", "#ae3ec9", "#f76707"];
+  const perim = loop.reduce((s, a, i) => { const b = loop[(i + 1) % 4]; return s + Math.hypot(b[0] - a[0], b[1] - a[1]); }, 0);
+  for (let i = 0; i < 10; i++) {
+    const car = new THREE.Group();
+    const paint = new THREE.MeshPhysicalMaterial({ color: carCols[i % carCols.length], roughness: 0.3, metalness: 0.4, clearcoat: 1 });
+    const body = roundedBox(1.5, 0.45, 0.75, 0.15, paint); body.position.y = 0.18; body.castShadow = true; car.add(body);
+    const cab = roundedBox(0.85, 0.38, 0.68, 0.12, new THREE.MeshPhysicalMaterial({ color: "#a5d8ff", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.85 })); cab.position.set(-0.08, 0.6, 0); car.add(cab);
+    for (const [wx2, wz2] of [[0.48, 0.38], [-0.48, 0.38], [0.48, -0.38], [-0.48, -0.38]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.12, 14), new THREE.MeshStandardMaterial({ color: "#222", roughness: 0.8 })); w.rotation.x = Math.PI / 2; w.position.set(wx2, 0.17, wz2); car.add(w); }
+    car.userData.car = { d: (perim / 10) * i, v: 3 + r() * 2, perim, lane: i % 2 ? 0.7 : -0.7 };
+    scene.add(car); cars.push(car);
   }
   BLOB = blobTex();
   marker = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshPhysicalMaterial({ color: "#ffd43b", emissive: "#b8860b", emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.2, clearcoat: 1 }));
   marker.scale.y = 1.5; scene.add(marker);
 }
-function house(x, z, roofCol, r) {
-  const h = new THREE.Group();
-  const wall = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g) => {
-    g.fillStyle = "#f4ead8"; g.fillRect(0, 0, 256, 256);
-    for (let y = 0; y < 256; y += 16) { g.fillStyle = "rgba(150,120,90,.12)"; g.fillRect(0, y, 256, 2); }
-    g.fillStyle = "#6b4f3a"; g.fillRect(104, 150, 48, 106);
-    for (const wx2 of [36, 176]) { g.fillStyle = "#8ec5ff"; g.fillRect(wx2, 90, 44, 44); g.strokeStyle = "#fff"; g.lineWidth = 6; g.strokeRect(wx2, 90, 44, 44); g.beginPath(); g.moveTo(wx2 + 22, 90); g.lineTo(wx2 + 22, 134); g.moveTo(wx2, 112); g.lineTo(wx2 + 44, 112); g.stroke(); }
-  }), roughness: 0.85 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 2.6), wall); body.position.y = 1.1; body.castShadow = body.receiveShadow = true; h.add(body);
-  const roofGeo = new THREE.CylinderGeometry(0.01, 2.4, 1.6, 4, 1); roofGeo.rotateY(Math.PI / 4); roofGeo.scale(1.05, 1, 0.92);
-  const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: roofCol, roughness: 0.6 })); roof.position.y = 3; roof.castShadow = true; h.add(roof);
-  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1, 0.4), new THREE.MeshStandardMaterial({ color: "#8d6e63" })); ch.position.set(0.8, 3.3, 0.3); ch.castShadow = true; h.add(ch);
-  h.position.set(x, 0, z); h.rotation.y = Math.atan2(-x, -z) + (r() - 0.5) * 0.4; h.scale.setScalar(1.1);
-  return h;
+// 外周道路に沿って車を動かす
+function moveCars(dt) {
+  for (const car of cars) {
+    const u = car.userData.car; u.d = (u.d + u.v * dt * (u.lane > 0 ? 1 : -1) + u.perim) % u.perim;
+    let d = u.d;
+    for (let i = 0; i < 4; i++) {
+      const a = loop[i], b = loop[(i + 1) % 4], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (d <= l) {
+        const t = d / l, dx = (b[0] - a[0]) / l, dz = (b[1] - a[1]) / l;
+        car.position.set(a[0] + (b[0] - a[0]) * t - dz * u.lane, 0.03, a[1] + (b[1] - a[1]) * t + dx * u.lane);
+        car.rotation.y = Math.atan2(-dz, dx) + (u.lane > 0 ? 0 : Math.PI);
+        break;
+      }
+      d -= l;
+    }
+  }
 }
+// ---------- 町のテクスチャ ----------
+const paveTex = () => canvasTex(256, 256, g => {
+  g.fillStyle = "#cfc9be"; g.fillRect(0, 0, 256, 256);
+  const r = rng(5);
+  for (let y = 0; y < 256; y += 32) for (let x = 0; x < 256; x += 32) { g.fillStyle = `hsl(35,${8 + r() * 8}%,${74 + r() * 8}%)`; g.fillRect(x + 1, y + 1, 30, 30); }
+}, 1);
+const roadTex = () => canvasTex(256, 128, g => {
+  g.fillStyle = "#4a4e54"; g.fillRect(0, 0, 256, 128);
+  const r = rng(9);
+  for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(${r() < 0.5 ? "255,255,255" : "0,0,0"},${0.05 + r() * 0.08})`; g.fillRect(r() * 256, r() * 128, 2, 2); }
+  g.fillStyle = "#e9ecef"; g.fillRect(0, 6, 256, 5); g.fillRect(0, 117, 256, 5);
+  g.fillStyle = "#ffd43b"; g.fillRect(40, 61, 176, 6);
+});
+const houseTex = () => canvasTex(256, 256, g => {
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 16) { g.fillStyle = "rgba(150,120,90,.12)"; g.fillRect(0, y, 256, 2); }
+  g.fillStyle = "#6b4f3a"; g.fillRect(104, 150, 48, 106);
+  for (const x of [36, 176]) { g.fillStyle = "#8ec5ff"; g.fillRect(x, 90, 44, 44); g.strokeStyle = "#fff"; g.lineWidth = 6; g.strokeRect(x, 90, 44, 44); g.beginPath(); g.moveTo(x + 22, 90); g.lineTo(x + 22, 134); g.moveTo(x, 112); g.lineTo(x + 44, 112); g.stroke(); }
+});
+const shopTex = () => canvasTex(256, 256, g => {
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = "#7fb9e6"; g.fillRect(18, 120, 150, 120); g.fillStyle = "rgba(255,255,255,.35)"; g.fillRect(30, 130, 30, 100);
+  g.fillStyle = "#5c4033"; g.fillRect(180, 120, 56, 136);
+  g.fillStyle = "#ffe8a3"; g.fillRect(18, 40, 220, 50); g.fillStyle = "#5c4033"; g.font = "bold 34px sans-serif"; g.textAlign = "center"; g.fillText("SHOP", 128, 78);
+});
+const aptTex = () => canvasTex(256, 512, g => {
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, 256, 512);
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 4; x++) {
+    g.fillStyle = "#8ec5ff"; g.fillRect(18 + x * 60, 30 + y * 96, 42, 52);
+    g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(12 + x * 60, 86 + y * 96, 54, 8);
+  }
+  g.fillStyle = "#6b4f3a"; g.fillRect(104, 452, 48, 60);
+});
+const officeTex = (h) => canvasTex(128, 256, g => {
+  g.fillStyle = "#b8c4cf"; g.fillRect(0, 0, 128, 256);
+  const rows = h > 7 ? 20 : 12, r = rng(h * 7);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < 4; x++) {
+    g.fillStyle = r() < 0.15 ? "#fff3bf" : `hsl(205,${45 + r() * 15}%,${45 + r() * 15}%)`;
+    g.fillRect(6 + x * 30, 4 + y * (256 / rows), 24, 256 / rows - 6);
+  }
+});
 
 // ---------- 人物 ----------
 const SKINS = ["#f6d1b5", "#e9b98f", "#d39b72", "#f2c6a0"];
@@ -342,14 +497,17 @@ function animate() {
   const f = tokens.get(focusId);
   if (f) { marker.visible = true; marker.position.set(f.group.position.x, f.group.position.y + 1.9 + Math.sin(now / 250) * 0.12, f.group.position.z); marker.rotation.y += dt * 2; }
   else marker.visible = false;
-  for (const o of scene.children) if (o.userData.cloud) { o.position.x += o.userData.cloud * dt; if (o.position.x > 70) o.position.x = -70; }
+  for (const o of scene.children) if (o.userData.cloud) { o.position.x += o.userData.cloud * dt; if (o.position.x > 90) o.position.x = -90; }
   for (const n of Object.values(nodes)) if (n._flag) n._flag.rotation.y = Math.sin(tt * 2) * 0.15;
   let tp, tl;
   if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 1.0, g.z); tp = new THREE.Vector3(g.x + 1.2, 3.8, g.z + 5.2); }
-  else { tl = new THREE.Vector3(0, 0, 1.5); tp = new THREE.Vector3(0, 37, 28); }
+  else { const D = Math.max(bounds.Z1 - bounds.Z0, (bounds.X1 - bounds.X0) * 1.25 / Math.max(0.6, camera.aspect)); tl = new THREE.Vector3(0, 0, D * 0.1); tp = new THREE.Vector3(0, D * 0.98, D * 0.66); }
   const a = 1 - Math.exp(-dt * 3);
   camPos.lerp(tp, a); camLook.lerp(tl, a);
   camera.position.copy(camPos); camera.lookAt(camLook);
+  // 影はカメラの見ている場所のまわりだけ計算する
+  sun.target.position.set(camLook.x, 0, camLook.z); sun.position.set(camLook.x - 18, 34, camLook.z + 14);
+  moveCars(dt);
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]; p.life -= dt;
     if (p.vel) { p.vel.y -= p.g * dt; p.obj.position.addScaledVector(p.vel, dt); p.obj.rotation.x += p.spin * dt; p.obj.rotation.z += p.spin * dt * 0.7; }
@@ -364,6 +522,7 @@ const B3 = {
   mount(el, nodeMap, typeColor) {
     try {
       container = el; nodes = nodeMap;
+      { const v = Object.values(nodes); CX = (Math.min(...v.map(n => n.x)) + Math.max(...v.map(n => n.x))) / 2; CY = (Math.min(...v.map(n => n.y)) + Math.max(...v.map(n => n.y))) / 2; }
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -371,7 +530,7 @@ const B3 = {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.domElement.className = "c3d";
       el.prepend(renderer.domElement);
-      scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400); clock = new THREE.Clock();
+      scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(42, 1, 0.1, 600); clock = new THREE.Clock();
       buildWorld(typeColor);
       const fit = () => { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
       new ResizeObserver(fit).observe(el); fit();

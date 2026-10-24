@@ -50,7 +50,7 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
 .board{padding:0;overflow:hidden}
 .stage{position:relative;height:min(68vh,620px);border-radius:16px;overflow:hidden;background:#bfe6ff}
 .stage .c3d{position:absolute;inset:0;width:100%;height:100%;display:block}
-.minimap{position:absolute;right:10px;top:10px;width:22%;max-width:190px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:12px;padding:4px;cursor:pointer;box-shadow:var(--shadow)}
+.minimap{position:absolute;right:10px;top:10px;width:15%;max-width:130px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:12px;padding:4px;cursor:pointer;box-shadow:var(--shadow)}
 .minimap svg{width:100%;height:auto;display:block}
 .minimap .tilelabel{display:none}
 .minimap .mmttl{font-size:11px;color:var(--sub);text-align:center}
@@ -263,6 +263,8 @@ const DREAMS=[
   {name:"YouTuber",icon:"📹",salary:45,req:{sense:5,charm:6},win:"動画が大バズり！登録者100万人",mid:"コラボ動画が好評",lose:"炎上して謝罪動画…"},
   {name:"プロゲーマー",icon:"🎮",salary:55,req:{int:5,sense:6},win:"世界大会で優勝！",mid:"国内大会で入賞",lose:"初戦敗退…"}];
 const FREETER={name:"フリーター",salary:35,req:{}};
+// 子ども時代が長くなったぶん、仕事に必要な能力も高め（1.6倍）
+[...JOBS1,...JOBS2,...DREAMS].forEach(j=>{for(const k in j.req)j.req[k]=Math.round(j.req[k]*1.6);});
 const HOUSES=[{name:"こぢんまりハウス",cost:200},{name:"ひろびろマンション",cost:400},{name:"ゆめのお城",cost:800}];
 // デートの相手（オリジナルキャラクター）。好きなタイプの能力が高いほど好感度が上がりやすい。
 // gender: "f"=女性 "m"=男性。プレイヤーの性別とちがう相手が候補になる。
@@ -326,6 +328,25 @@ const DATES=[
   {label:"高級レストラン",icon:"🍷",cost:60,aff:30}];
 // 選択肢つきイベント。eff は能力値とお金（万円）の増減。
 const CHOICES={
+  excursion:{title:"遠足",icon:"🍙",opts:[{label:"先頭で山道を歩く",eff:{body:2}},{label:"植物図鑑で調べる",eff:{int:2}},{label:"景色をスケッチ",eff:{sense:2}},{label:"お弁当を分けあう",eff:{charm:2}}]},
+  reading:{title:"読書感想文",icon:"📖",opts:[{label:"宇宙の図鑑を読む",eff:{int:2}},{label:"絵本を自分で作る",eff:{sense:2}},{label:"スポーツ選手の伝記",eff:{body:1,int:1}},{label:"友達のおすすめを読む",eff:{charm:2}}]},
+  sportsteam:{title:"少年団に入る",icon:"⚾",opts:[{label:"野球",eff:{body:2}},{label:"サッカー",eff:{body:1,charm:1}},{label:"ダーツ教室",eff:{sense:2}},{label:"将棋クラブ",eff:{int:2}}]},
+  cooking:{title:"調理実習",icon:"🍳",opts:[{label:"きれいに盛りつけ",eff:{sense:2}},{label:"段取りを考える",eff:{int:2}},{label:"重い鍋を運ぶ",eff:{body:2}},{label:"味見して盛り上げる",eff:{charm:2}}]},
+  contest:{title:"コンクールに応募",icon:"🏆",opts:[{label:"絵画コンクール",eff:{sense:2}},{label:"作文コンクール",eff:{int:1,charm:1}},{label:"科学コンテスト",eff:{int:2}},{label:"合唱コンクール",eff:{charm:1,sense:1}}]},
+  friend:{title:"友達とケンカした！",icon:"😤",opts:[{label:"すぐにあやまる",eff:{charm:2}},{label:"じっくり話し合う",eff:{int:1,charm:1}},{label:"かけっこで勝負",eff:{body:2}},{label:"絵手紙で仲直り",eff:{sense:2}}]},
+  schooltrip:{title:"修学旅行",icon:"🚄",opts:[{label:"お寺の歴史を調べる",eff:{int:2}},{label:"班長になる",eff:{charm:2}},{label:"夜の枕投げ大会",eff:{body:2}},{label:"写真係",eff:{sense:2}}]},
+  volunteer:{title:"ボランティア活動",icon:"🤝",opts:[{label:"海岸のゴミ拾い",eff:{body:2}},{label:"小学生に勉強を教える",eff:{int:2}},{label:"町の壁画づくり",eff:{sense:2}},{label:"募金の呼びかけ",eff:{charm:2}}]},
+  juken:{title:"受験勉強",icon:"📚",opts:[{label:"毎日コツコツ勉強",eff:{int:3}},{label:"スポーツ推薦をめざす",eff:{body:3}},{label:"作品集で推薦をめざす",eff:{sense:3}},{label:"面接と自己PRを特訓",eff:{charm:3}}]},
+  lastSummer:{title:"高校最後の夏",icon:"🎆",opts:[{label:"部活の最後の大会",eff:{body:2}},{label:"夏期講習",eff:{int:2}},{label:"みんなで花火大会",eff:{charm:2}},{label:"作品づくりに没頭",eff:{sense:2}}]},
+  graduation:{title:"卒業式",icon:"🌸",opts:[{label:"答辞を読む",eff:{int:1,charm:1}},{label:"卒業制作をしあげる",eff:{sense:2}},{label:"最後にグラウンドを走る",eff:{body:2}},{label:"寄せ書きを集める",eff:{charm:2}}]},
+  parttime:{title:"アルバイト選び",icon:"🧾",opts:[{label:"引っ越しのバイト",eff:{body:2,money:30}},{label:"家庭教師",eff:{int:2,money:30}},{label:"デザイン事務所",eff:{sense:2,money:20}},{label:"カフェの接客",eff:{charm:2,money:30}}]},
+  seminar:{title:"ゼミを選ぶ",icon:"🧑‍🔬",opts:[{label:"最先端の研究ゼミ",eff:{int:3}},{label:"スポーツ科学ゼミ",eff:{body:2,int:1}},{label:"デザインゼミ",eff:{sense:3}},{label:"経営ゼミ",eff:{charm:2,int:1}}]},
+  travel:{title:"旅行に行こう",icon:"🧳",opts:[{label:"山登りツアー",eff:{body:2,money:-30}},{label:"美術館のある街",eff:{sense:2,money:-30}},{label:"歴史をめぐる旅",eff:{int:2,money:-30}},{label:"友達と大人数で",eff:{charm:2,money:-30}}]},
+  sidejob:{title:"副業をはじめる？",icon:"💻",opts:[{label:"動画編集",eff:{sense:2,money:40}},{label:"ライター",eff:{int:2,money:40}},{label:"配達",eff:{body:2,money:40}},{label:"副業はしない",eff:{charm:1}}]},
+  parenting:{title:"子育て・家族の時間",icon:"🧒",opts:[{label:"公園でいっぱい遊ぶ",eff:{body:2}},{label:"読み聞かせ",eff:{int:2}},{label:"いっしょに工作",eff:{sense:2}},{label:"ご近所づきあい",eff:{charm:2}}]},
+  community:{title:"地域活動",icon:"🏘️",opts:[{label:"防災訓練のリーダー",eff:{body:2}},{label:"子ども食堂のお手伝い",eff:{charm:2}},{label:"お祭りのポスター",eff:{sense:2}},{label:"町内会の会計",eff:{int:2}}]},
+  senior:{title:"シニアの趣味",icon:"🍵",opts:[{label:"ゲートボール",eff:{body:2}},{label:"囲碁・将棋",eff:{int:2}},{label:"俳句・水彩画",eff:{sense:2}},{label:"老人会の幹事",eff:{charm:2}}]},
+  health:{title:"健康のひけつ",icon:"🧘",opts:[{label:"毎朝ウォーキング",eff:{body:2}},{label:"脳トレ",eff:{int:2}},{label:"絵手紙",eff:{sense:2}},{label:"友達とおしゃべり",eff:{charm:2}}]},
   toy:{title:"はじめてのおもちゃ",icon:"🧸",opts:[{label:"ボール",eff:{body:2}},{label:"クレヨン",eff:{sense:2}},{label:"絵本",eff:{int:2}},{label:"ぬいぐるみ",eff:{charm:2}}]},
   park:{title:"公園でなにして遊ぶ？",icon:"🛝",opts:[{label:"鬼ごっこ",eff:{body:2}},{label:"砂場でお城づくり",eff:{sense:2}},{label:"虫の観察",eff:{int:2}},{label:"みんなと仲良く",eff:{charm:2}}]},
   kinder:{title:"保育園の発表会",icon:"🎤",opts:[{label:"歌をうたう",eff:{charm:1,sense:1}},{label:"ダンス",eff:{body:2}},{label:"劇のナレーター",eff:{int:1,charm:1}},{label:"背景の絵をかく",eff:{sense:2}}]},
@@ -357,113 +378,94 @@ function T(id,x,y,type,label,icon,extra){N[id]=Object.assign({id,x,y,type,label,
 const M=(a,label,st)=>({amount:a,text:label,st});
 const CH=key=>({key});
 (function build(){
-  // 子ども時代（いちばん上の段・右から左へ）
-  // 子ども時代（上の2段）：生まれてから進路を決めるまで。選択肢で能力をのばす。
-  const kid=[["start","誕生","👶"],["choice","おもちゃ","🧸",CH("toy")],["money","お祝い","🎁",M(30,"親せきからお祝い")],["choice","公園","🛝",CH("park")],
-    ["choice","発表会","🎤",CH("kinder")],["card","カード","🃏"],["choice","宿題","✏️",CH("homework")],["money","お手伝い","🧹",M(10,"お手伝いでおこづかい")],
-    ["choice","運動会","🏃",CH("sportsday")],["choice","家族でダーツ","🎯",CH("dartskid")],["choice","林間学校","🏕️",CH("camp")],["choice","夏休み","🌻",CH("summer")],
-    ["choice","放課後","🏫",CH("play")],["money","お年玉","🧧",M(20,"お年玉をもらった")],["choice","習い事","🎒",CH("lesson")],
-    ["card","カード","🃏"],["choice","自由研究","🔎",CH("research")],["money","おこづかい","🪙",M(10,"お手伝いでおこづかい")],["choice","部活動","🏅",CH("club")],
-    ["choice","文化祭","🎪",CH("fest")],["choice","テスト前夜","📝",CH("exam")],["choice","進路相談","🧑‍🏫",{key:"future",stop:true}]];
-  const kpos=[];for(let x=0;x<=11;x++)kpos.push([x,-2.4]);for(let x=11;x>=1;x--)kpos.push([x,-1.2]);
-  kid.forEach((d,i)=>T("y"+i,kpos[i][0],kpos[i][1],d[0],d[1],d[2],d[3]));
-  T("S",0,1,"branch","進路","🚩",{labels:["大学コース","就職コース","夢追いコース"]});
+  // コースは町の中を走る道。左右に行ったり来たりしながら下へ進む（x:0〜20列）。
+  const XR=20;
+  const row=(y,from,to)=>{const a=[];const s=from<=to?1:-1;for(let x=from;x!==to+s;x+=s)a.push([x,y]);return a;};
+  const L=(prefix,list,pos)=>list.forEach((d,i)=>T(prefix+i,pos[i][0],pos[i][1],d[0],d[1],d[2],d[3]));
+  const pay=["payday","給料日","💰"],card=["card","カード","🃏"],date=["date","デート","💑"];
+  // 子ども時代：生まれてから進路を決めるまで。選択肢で能力をのばす。
+  const kid=[["start","誕生","👶"],["choice","おもちゃ","🧸",CH("toy")],["money","お祝い","🎁",M(30,"親せきからお祝い")],["choice","公園","🛝",CH("park")],card,
+    ["choice","発表会","🎤",CH("kinder")],["money","七五三","👘",M(-10,"七五三の記念写真")],["choice","遠足","🍙",CH("excursion")],["choice","宿題","✏️",CH("homework")],
+    ["money","お手伝い","🧹",M(10,"お手伝いでおこづかい")],["choice","運動会","🏃",CH("sportsday")],card,["choice","家族でダーツ","🎯",CH("dartskid")],
+    ["choice","読書感想文","📖",CH("reading")],["money","お年玉","🧧",M(20,"お年玉をもらった")],["choice","林間学校","🏕️",CH("camp")],["choice","夏休み","🌻",CH("summer")],
+    ["choice","少年団","⚾",CH("sportsteam")],["money","落とし物","👛",M(10,"落とし物を届けてお礼をもらった",{charm:1})],["choice","放課後","🏫",CH("play")],card,
+    ["choice","習い事","🎒",CH("lesson")],["choice","調理実習","🍳",CH("cooking")],["money","おこづかい","🪙",M(20,"おばあちゃんからおこづかい")],
+    ["choice","自由研究","🔎",CH("research")],["choice","コンクール","🏆",CH("contest")],["choice","友達とケンカ","😤",CH("friend")],["money","お年玉","🧧",M(30,"お年玉をもらった")],card,
+    ["choice","部活動","🏅",CH("club")],["choice","修学旅行","🚄",CH("schooltrip")],["money","おみやげ","🎁",M(-10,"修学旅行のおみやげを買った")],["choice","文化祭","🎪",CH("fest")],
+    ["choice","テスト前夜","📝",CH("exam")],["money","アルバイト","🍔",M(40,"はじめてのアルバイト",{charm:1})],card,["choice","ボランティア","🤝",CH("volunteer")],
+    ["choice","受験勉強","📚",CH("juken")],["money","模試","💯",M(10,"模試で好成績、ごほうび",{int:1})],["choice","最後の夏","🎆",CH("lastSummer")],
+    ["choice","卒業式","🌸",CH("graduation")],card,["money","卒業祝い","💐",M(50,"卒業のお祝い")],["choice","進路相談","🧑‍🏫",{key:"future",stop:true}]];
+  L("y",kid,[...row(0,0,XR),[XR,1.2],...row(2.4,XR,0),[0,3.6]]);
+  T("S",0,6,"branch","進路","🚩",{labels:["大学コース","就職コース","夢追いコース"]});
   const col=[["money","入学金","🎓",M(-200,"入学金を払った",{int:2})],["choice","サークル","🎸",CH("circle")],["meet","キャンパスの出会い","💘",{stop:true}],
-    ["money","アルバイト","☕",M(60,"カフェでアルバイト",{charm:1})],["date","デート","💑"],["money","留学","✈️",M(-100,"短期留学に行った",{int:2,charm:1})],
-    ["card","カード","🃏"],["date","デート","💑"],["money","資格","📜",M(40,"資格に合格！お祝いをもらう",{int:2})],
-    ["job","就職(大卒)","💼",{stop:true,tier:2}]];
-  const car=[["job","就職","💼",{stop:true,tier:1}],["payday","給料日","💰"],["meet","職場の出会い","💘",{stop:true}],
-    ["choice","休日","🗓️",CH("holiday")],["payday","給料日","💰"],["date","デート","💑"],
-    ["card","カード","🃏"],["money","社内表彰","🏅",M(100,"社内表彰で金一封",{charm:1})],["payday","給料日","💰"],["date","デート","💑"]];
-  const drm=[["job","夢に挑戦","🌟",{stop:true,tier:3}],["dream","デビュー戦","🎯"],["meet","ファンとの出会い","💘",{stop:true}],
-    ["choice","特訓","🏋️",CH("train")],["payday","給料日","💰"],["date","デート","💑"],["dream","大舞台","🏟️"],
-    ["date","デート","💑"],["payday","給料日","💰"],["dream","ビッグチャンス","🌟"]];
-  col.forEach((d,i)=>T("c"+i,1+i,0,d[0],d[1],d[2],d[3]));
-  car.forEach((d,i)=>T("k"+i,1+i,1,d[0],d[1],d[2],d[3]));
-  drm.forEach((d,i)=>T("d"+i,1+i,2,d[0],d[1],d[2],d[3]));
-  const main1=[["payday","給料日","💰"],["propose","プロポーズ","💍",{stop:true}],["date","デート","💑"],
-    ["payday","給料日","💰"],["card","カード","🃏"],["house","マイホーム","🏠",{stop:true}],["lottery","宝くじ","🎟️"],
-    ["payday","給料日","💰"],["baby","赤ちゃん","👶",{n:1}],["jobchange","転職のチャンス","🔄"],["baby","ふたご","👶👶",{n:2}],
-    ["payday","給料日","💰"],["dream","ダーツ大会","🎯"]];
-  const m1pos=[[11,1],[11,3.1]];for(let x=10;x>=0;x--)m1pos.push([x,3.1]);
-  main1.forEach((d,i)=>T("m"+i,m1pos[i][0],m1pos[i][1],d[0],d[1],d[2],d[3]));
-  T("B",0,4.65,"branch","分かれ道","🪧",{labels:["チャレンジロード","のんびりロード"]});
-  const risky=[["invest","起業","🚀"],["payday","給料日","💰"],["money","大口契約","🤝",M(300,"大口契約をゲット！")],
-    ["money","詐欺","🦹",M(-250,"あやしい投資話にだまされた")],["invest","株式投資","📈"],["payday","給料日","💰"],
-    ["money","TV出演","📺",M(200,"テレビに出演して大反響")],["money","台風","🌀",M(-200,"台風で家がこわれた")],["invest","新事業","💡"],["payday","給料日","💰"]];
-  const safe=[["payday","給料日","💰"],["money","家庭菜園","🥕",M(30,"野菜が大収穫")],["money","健康診断","🩺",M(-20,"人間ドックを受けた")],
-    ["payday","給料日","💰"],["perchild","入学式","🎒",M(-30,"子どもの入学準備（子ども1人につき）")],["money","ボーナス","🎁",M(80,"ボーナスが出た")],
-    ["payday","給料日","💰"],["money","家族旅行","🚌",M(-50,"家族で温泉旅行")],["money","お祭り","🏮",M(40,"町内のお祭りで景品をゲット")],["payday","給料日","💰"]];
-  risky.forEach((d,i)=>T("r"+i,1+i,4.1,d[0],d[1],d[2],d[3]));
-  safe.forEach((d,i)=>T("s"+i,1+i,5.2,d[0],d[1],d[2],d[3]));
-  const main2=[["house","マイホーム","🏠"],["payday","給料日","💰"],["perchild","習い事","🎹",M(-20,"子どもの習い事（子ども1人につき）")],
-    ["raise","昇進","⬆️",{amount:30}],["payday","給料日","💰"],["baby","赤ちゃん","👶",{n:1}],["money","リフォーム","🔨",M(-100,"部屋をリフォーム")],
-    ["lottery","宝くじ","🎟️"],["payday","給料日","💰"],["tax","税金","🧾"],["perchild","親孝行","💐",M(50,"子どもからプレゼント（子ども1人につき）")],
-    ["payday","給料日","💰"],["dream","スポンサー","🤝"],
-    ["payday","給料日","💰"],["money","退職金","🏦",M(100,"退職金の積み立てが満期")],["money","世界一周","🌍",M(-200,"世界一周旅行へ")],
-    ["payday","給料日","💰"],["perchild","孫","🍼",M(20,"孫が生まれてお祝い（子ども1人につき）")],["invest","資産運用","📊"],
-    ["payday","給料日","💰"],["money","ボランティア","🌱",M(50,"地域に貢献して感謝状")],["money","健康グッズ","🧘",M(-50,"健康グッズを買いそろえた")],
-    ["payday","給料日","💰"],["money","記念パーティー","🎉",M(-30,"記念パーティーを開いた")]];
-  const m2pos=[[11,4.65],[11,6.2]];for(let x=10;x>=0;x--)m2pos.push([x,6.2]);for(let x=0;x<=10;x++)m2pos.push([x,7.3]);
-  main2.forEach((d,i)=>T("n"+i,m2pos[i][0],m2pos[i][1],d[0],d[1],d[2],d[3]));
-  T("C",11,7.3,"branch","人生の転機","🧭",{labels:["世界チャレンジロード","ふるさとロード"]});
-  const world=[["dream","世界大会","🌏"],["payday","給料日","💰"],["money","語学留学","🗣️",M(-40,"語学スクールに通った")],["invest","海外投資","💹"],
-    ["payday","給料日","💰"],["money","世界的ヒット","🎬",M(250,"手がけた企画が世界でヒット")],["money","時差ボケ","😵",M(-30,"時差ボケで大寝坊…")],
-    ["dream","海外スポンサー","🤝"],["payday","給料日","💰"],["money","帰国パーティー","🥂",M(-60,"帰国パーティーを開いた")]];
-  const home=[["payday","給料日","💰"],["money","町内会長","🏘️",M(40,"町内会長をつとめて感謝状")],["perchild","運動会","🏃",M(-10,"運動会のお弁当（子ども1人につき）")],
-    ["payday","給料日","💰"],["money","古民家カフェ","☕",M(120,"週末だけのカフェが大人気")],["lottery","商店街の福引","🎁"],["payday","給料日","💰"],
-    ["money","温泉","♨️",M(-30,"近所の温泉でのんびり")],["dream","地元ダーツリーグ","🎯"],["payday","給料日","💰"]];
-  world.forEach((d,i)=>T("w"+i,10-i,8.3,d[0],d[1],d[2],d[3]));
-  home.forEach((d,i)=>T("h"+i,10-i,9.4,d[0],d[1],d[2],d[3]));
-  const old=[["money","還暦","🎂",M(50,"家族から還暦のお祝い")],
-    ["payday","給料日","💰"],["perchild","孫の誕生日","🎈",M(-20,"孫へのプレゼント（子ども1人につき）")],["money","陶芸","🏺",M(30,"作った器が売れた")],["dream","シニア大会","🏅"],
-    ["payday","給料日","💰"],["money","人間ドック","🩺",M(-40,"人間ドックで健康チェック")],["money","同窓会","🍻",M(-20,"なつかしの同窓会")],["money","年金","👛",M(60,"年金が振り込まれた")],
-    ["lottery","宝くじ","🎟️"],["payday","給料日","💰"],["money","庭いじり","🌷",M(10,"庭の花がコンクールで入賞")],["money","バリアフリー","🔨",M(-80,"家をバリアフリーに")],
-    ["money","パソコン教室","💻",M(-20,"パソコン教室に入会")],["payday","給料日","💰"],["perchild","孫と旅行","🚅",M(-30,"孫と旅行（子ども1人につき）")],
-    ["money","自伝出版","📖",M(100,"自伝がちょっとした話題に")],["invest","老後の資産運用","📊"],["payday","給料日","💰"],["money","マラソン完走","🏃",M(30,"市民マラソンを完走")],
-    ["dream","レジェンドマッチ","🌟"],["money","へそくり発見","🪙",M(80,"大掃除でへそくりを発見")],["payday","給料日","💰"],["money","感謝の会","💐",M(-30,"お世話になった人を招いて感謝の会")]];
-  const opos=[[0,8.85]];for(let x=0;x<=11;x++)opos.push([x,10.4]);for(let x=11;x>=1;x--)opos.push([x,11.5]);
-  old.forEach((d,i)=>T("o"+i,opos[i][0],opos[i][1],d[0],d[1],d[2],d[3]));
-  T("G",0,11.5,"goal","ゴール","🏁",{stop:true});
+    ["money","アルバイト","☕",M(60,"カフェでアルバイト",{charm:1})],date,["choice","バイト選び","🧾",CH("parttime")],["money","留学","✈️",M(-100,"短期留学に行った",{int:2,charm:1})],card,date,
+    ["choice","ゼミ選び","🧑‍🔬",CH("seminar")],["money","奨学金","🎖️",M(80,"成績優秀で奨学金",{int:1})],["choice","休日","🗓️",CH("holiday")],date,
+    ["money","学園祭","🎪",M(30,"学園祭の模擬店が大繁盛",{charm:1})],card,["choice","チャレンジ","🔥",CH("challenge")],["money","資格","📜",M(40,"資格に合格！お祝いをもらう",{int:2})],
+    ["choice","卒業旅行","🧳",CH("travel")],["job","就職(大卒)","💼",{stop:true,tier:2}]];
+  const car=[["job","就職","💼",{stop:true,tier:1}],pay,["meet","職場の出会い","💘",{stop:true}],["choice","休日","🗓️",CH("holiday")],pay,date,card,
+    ["money","社内表彰","🏅",M(100,"社内表彰で金一封",{charm:1})],["choice","副業","💻",CH("sidejob")],pay,date,["money","資格手当","📜",M(40,"資格をとって手当がついた",{int:1})],
+    ["choice","週末のすごし方","🗓️",CH("weekend")],["jobchange","転職のチャンス","🔄"],pay,card,["money","飲み会","🍻",M(-20,"会社の飲み会で盛り上げ役",{charm:1})],date,pay];
+  const drm=[["job","夢に挑戦","🌟",{stop:true,tier:3}],["dream","デビュー戦","🎯"],["meet","ファンとの出会い","💘",{stop:true}],["choice","特訓","🏋️",CH("train")],pay,date,
+    ["dream","大舞台","🏟️"],card,["money","SNSでバズる","📱",M(50,"練習動画がバズった",{charm:1})],["choice","特訓","🏋️",CH("train")],pay,date,["dream","遠征","🚌"],
+    ["money","けが","🩹",M(-60,"けがをして治療費")],card,["dream","ビッグチャンス","🌟"],["jobchange","別の道も考える","🔄"],pay,date];
+  L("c",col,row(4.8,1,XR-1));L("k",car,row(6,1,XR-1));L("d",drm,row(7.2,1,XR-1));
+  // おとなの人生（前半）
+  const main1=[pay,["propose","プロポーズ","💍",{stop:true}],date,pay,card,["house","マイホーム","🏠",{stop:true}],["choice","週末のすごし方","🗓️",CH("weekend")],
+    ["lottery","宝くじ","🎟️"],pay,["baby","赤ちゃん","👶",{n:1}],["jobchange","転職のチャンス","🔄"],["choice","子育て方針","🧒",CH("parenting")],pay,
+    ["money","結婚式に招待","💒",M(-20,"友達の結婚式でスピーチ",{charm:1})],["meet","同窓会の出会い","💘"],date,["baby","ふたご","👶👶",{n:2}],pay,card,
+    ["choice","副業","💻",CH("sidejob")],["money","車を買う","🚗",M(-80,"家族用の車を買った")],["propose","プロポーズ","💍"],pay,["dream","ダーツ大会","🎯"],["raise","昇進","⬆️",{amount:30}]];
+  L("m",main1,[[XR,6],[XR,8.4],...row(9.6,XR,0),[0,11],[0,12.4]]);
+  T("B",0,13.8,"branch","分かれ道","🪧",{labels:["チャレンジロード","のんびりロード"]});
+  const risky=[["invest","起業","🚀"],["propose","プロポーズ","💍"],["money","大口契約","🤝",M(300,"大口契約をゲット！")],pay,["meet","パーティーの出会い","💘"],card,
+    ["choice","チャレンジ","🔥",CH("challenge")],["money","詐欺","🦹",M(-250,"あやしい投資話にだまされた")],["jobchange","ヘッドハンティング","🔄"],["invest","株式投資","📈"],pay,
+    ["money","TV出演","📺",M(200,"テレビに出演して大反響")],date,["money","台風","🌀",M(-200,"台風で家がこわれた")],card,["invest","新事業","💡"],["choice","副業","💻",CH("sidejob")],
+    ["money","海外進出","🌐",M(150,"取引先が海外に広がった")],pay];
+  const safe=[pay,date,["choice","新しい趣味","🎲",CH("hobby")],["propose","プロポーズ","💍"],["money","家庭菜園","🥕",M(30,"野菜が大収穫")],["jobchange","転職のチャンス","🔄"],
+    ["money","健康診断","🩺",M(-20,"人間ドックを受けた")],pay,["choice","週末のすごし方","🗓️",CH("weekend")],["perchild","入学式","🎒",M(-30,"子どもの入学準備（子ども1人につき）")],
+    ["money","ボーナス","🎁",M(80,"ボーナスが出た")],card,pay,["money","家族旅行","🚌",M(-50,"家族で温泉旅行")],["choice","地域活動","🏘️",CH("community")],
+    ["money","お祭り","🏮",M(40,"町内のお祭りで景品をゲット")],["baby","赤ちゃん","👶",{n:1}],date,pay];
+  L("r",risky,row(13.2,1,XR-1));L("s",safe,row(14.4,1,XR-1));
+  // おとなの人生（後半）
+  const main2=[["house","マイホーム","🏠"],pay,["choice","スキルアップ","📚",CH("study")],["perchild","習い事","🎹",M(-20,"子どもの習い事（子ども1人につき）")],["raise","昇進","⬆️",{amount:30}],pay,card,
+    ["jobchange","転職のチャンス","🔄"],["baby","赤ちゃん","👶",{n:1}],["money","リフォーム","🔨",M(-100,"部屋をリフォーム")],["lottery","宝くじ","🎟️"],["choice","スキルアップ","📚",CH("study")],pay,
+    ["tax","税金","🧾"],["perchild","誕生日","🎂",M(-10,"子どもの誕生日プレゼント（子ども1人につき）")],["choice","子育て方針","🧒",CH("parenting")],pay,["money","車の買いかえ","🚙",M(-60,"車を買いかえた")],
+    ["dream","スポンサー","🤝"],["choice","週末のすごし方","🗓️",CH("weekend")],card,pay,["money","PTA","🏫",M(10,"PTA役員のお礼",{charm:1})],["perchild","運動会","🏃",M(-10,"運動会のお弁当（子ども1人につき）")],
+    ["jobchange","転職のチャンス","🔄"],pay,["raise","昇進","⬆️",{amount:30}],["choice","家族旅行","🧳",CH("travel")],["invest","資産運用","📊"],pay,
+    ["perchild","受験","📝",M(-40,"子どもの受験（子ども1人につき）")],["money","ボーナス","🎁",M(100,"大きなボーナスが出た")],card,pay,["money","健康診断","🩺",M(-20,"健康診断で再検査…")],
+    ["choice","チャレンジ","🔥",CH("challenge")],["lottery","宝くじ","🎟️"],pay,["tax","税金","🧾"],["perchild","親孝行","💐",M(50,"子どもからプレゼント（子ども1人につき）")],
+    ["money","退職金","🏦",M(100,"退職金の積み立てが満期")],pay,["choice","地域活動","🏘️",CH("community")],["perchild","子どもの結婚式","💒",M(-50,"子どもの結婚式（子ども1人につき）")],card,pay];
+  L("n",main2,[[XR,13.8],[XR,15.6],...row(16.8,XR,0),[0,18],...row(19.2,0,XR),[XR,20.6]]);
+  T("C",XR,22.2,"branch","人生の転機","🧭",{labels:["世界チャレンジロード","ふるさとロード"]});
+  const world=[["dream","世界大会","🌏"],pay,["choice","スキルアップ","📚",CH("study")],["money","語学留学","🗣️",M(-40,"語学スクールに通った",{int:1})],["choice","旅行先","🧳",CH("travel")],
+    ["jobchange","海外で転職","🔄"],card,["invest","海外投資","💹"],pay,["money","世界的ヒット","🎬",M(250,"手がけた企画が世界でヒット")],["money","時差ボケ","😵",M(-30,"時差ボケで大寝坊…")],
+    ["dream","海外スポンサー","🤝"],card,["money","講演会","🎤",M(20,"現地で講演して大好評",{charm:1})],pay,["invest","為替","💱"],["money","帰国パーティー","🥂",M(-60,"帰国パーティーを開いた")],
+    ["dream","ワールドツアー","🌟"],pay];
+  const home=[pay,card,["money","町内会長","🏘️",M(40,"町内会長をつとめて感謝状")],["jobchange","転職のチャンス","🔄"],["perchild","運動会","🏃",M(-10,"運動会のお弁当（子ども1人につき）")],pay,
+    ["money","古民家カフェ","☕",M(120,"週末だけのカフェが大人気")],["choice","新しい趣味","🎲",CH("hobby")],["lottery","商店街の福引","🎁"],pay,["choice","地域活動","🏘️",CH("community")],
+    ["money","温泉","♨️",M(-30,"近所の温泉でのんびり")],["dream","地元ダーツリーグ","🎯"],card,["money","直売所","🥬",M(50,"野菜の直売所が人気")],pay,
+    ["perchild","孫","🍼",M(20,"孫が生まれてお祝い（子ども1人につき）")],["money","お祭り","🏮",M(10,"お祭りの実行委員をつとめた",{charm:1})],pay];
+  L("w",world,row(21.6,XR-1,1));L("h",home,row(22.8,XR-1,1));
+  // シニア時代
+  const old=[["money","還暦","🎂",M(50,"家族から還暦のお祝い")],pay,["perchild","孫の誕生日","🎈",M(-20,"孫へのプレゼント（子ども1人につき）")],card,["money","陶芸","🏺",M(30,"作った器が売れた")],
+    ["dream","シニア大会","🏅"],["choice","シニアの趣味","🍵",CH("senior")],pay,["money","人間ドック","🩺",M(-40,"人間ドックで健康チェック")],["money","同窓会","🍻",M(-20,"なつかしの同窓会")],card,
+    ["money","年金","👛",M(60,"年金が振り込まれた")],["lottery","宝くじ","🎟️"],pay,["money","庭いじり","🌷",M(10,"庭の花がコンクールで入賞")],["choice","健康法","🧘",CH("health")],
+    ["money","バリアフリー","🔨",M(-80,"家をバリアフリーに")],["money","パソコン教室","💻",M(-20,"パソコン教室に入会",{int:1})],pay,card,["perchild","孫と旅行","🚅",M(-30,"孫と旅行（子ども1人につき）")],
+    ["money","自伝出版","📖",M(100,"自伝がちょっとした話題に")],["invest","老後の資産運用","📊"],pay,["choice","シニアの趣味","🍵",CH("senior")],["money","マラソン完走","🏃",M(30,"市民マラソンを完走",{body:1})],
+    ["money","世界一周","🌍",M(-200,"世界一周旅行へ")],["dream","レジェンドマッチ","🌟"],pay,card,["money","へそくり発見","🪙",M(80,"大掃除でへそくりを発見")],["choice","健康法","🧘",CH("health")],
+    ["money","年金","👛",M(60,"年金が振り込まれた")],["perchild","孫のお年玉","🧧",M(-20,"孫にお年玉（子ども1人につき）")],["lottery","宝くじ","🎟️"],pay,
+    ["money","昔の遊び先生","🪀",M(40,"子どもたちに昔の遊びを教えた",{charm:1})],["choice","シニアの趣味","🍵",CH("senior")],card,["money","感謝の会","💐",M(-30,"お世話になった人を招いて感謝の会")],
+    ["money","記念パーティー","🎉",M(-30,"記念パーティーを開いた")],pay,["money","家族写真","📷",M(-10,"家族みんなで記念写真",{charm:1})],["money","人生の宝物","💎",M(50,"アルバムを見返して、思い出の品が高く売れた")]];
+  L("o",old,[[0,22.2],[0,24],...row(25.2,0,XR),[XR,26.4],...row(27.6,XR,1)]);
+  T("G",0,27.6,"goal","ゴール","🏁",{stop:true});
   const link=(a,b)=>N[a].next.push(b);
-  for(let i=0;i<kid.length-1;i++)link("y"+i,"y"+(i+1));
-  link("y"+(kid.length-1),"S");
-  link("S","c0");link("S","k0");link("S","d0");
-  for(let i=0;i<9;i++){link("c"+i,"c"+(i+1));link("k"+i,"k"+(i+1));link("d"+i,"d"+(i+1));}
-  link("c9","m0");link("k9","m0");link("d9","m0");
-  for(let i=0;i<main1.length-1;i++)link("m"+i,"m"+(i+1));
-  link("m"+(main1.length-1),"B");link("B","r0");link("B","s0");
-  for(let i=0;i<9;i++){link("r"+i,"r"+(i+1));link("s"+i,"s"+(i+1));}
-  link("r9","n0");link("s9","n0");
-  for(let i=0;i<main2.length-1;i++)link("n"+i,"n"+(i+1));
-  link("n"+(main2.length-1),"C");link("C","w0");link("C","h0");
-  for(let i=0;i<9;i++){link("w"+i,"w"+(i+1));link("h"+i,"h"+(i+1));}
-  link("w9","o0");link("h9","o0");
-  for(let i=0;i<old.length-1;i++)link("o"+i,"o"+(i+1));
-  link("o"+(old.length-1),"G");
-  // カードのマス
-  const over=(id,o)=>{const n=N[id];N[id]=Object.assign({id,x:n.x,y:n.y,next:n.next},o);};
-  ["r5","n6","n20","w6","h1","o3","o7","o19"].forEach(id=>over(id,{type:"card",label:"カード",icon:"🃏"}));
-  over("s1",{type:"date",label:"デート",icon:"💑"});
-  over("s3",{type:"propose",label:"プロポーズ",icon:"💍"});
-  over("r1",{type:"propose",label:"プロポーズ",icon:"💍"});
-  over("s2",{type:"choice",label:"新しい趣味",icon:"🎲",key:"hobby"});
-  over("r4",{type:"meet",label:"パーティーの出会い",icon:"💘"});
-  over("n2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
-  over("n16",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
-  over("w2",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
-  over("m6",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
-  over("s7",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
-  over("n11",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
-  over("n19",{type:"choice",label:"週末のすごし方",icon:"🗓️",key:"weekend"});
-  over("w4",{type:"choice",label:"スキルアップ",icon:"📚",key:"study"});
-  over("r6",{type:"choice",label:"チャレンジ",icon:"🔥",key:"challenge"});
-  over("s5",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
-  over("r8",{type:"jobchange",label:"ヘッドハンティング",icon:"🔄"});
-  over("n7",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
-  over("h3",{type:"jobchange",label:"転職のチャンス",icon:"🔄"});
-  over("w5",{type:"jobchange",label:"海外で転職",icon:"🔄"});
-  over("h7",{type:"choice",label:"新しい趣味",icon:"🎲",key:"hobby"});
+  const chain=(p,n)=>{for(let i=0;i<n-1;i++)link(p+i,p+(i+1));};
+  chain("y",kid.length);link("y"+(kid.length-1),"S");
+  ["c","k","d"].forEach((p,i)=>{link("S",p+"0");chain(p,[col,car,drm][i].length);link(p+([col,car,drm][i].length-1),"m0");});
+  chain("m",main1.length);link("m"+(main1.length-1),"B");
+  ["r","s"].forEach((p,i)=>{link("B",p+"0");chain(p,[risky,safe][i].length);link(p+([risky,safe][i].length-1),"n0");});
+  chain("n",main2.length);link("n"+(main2.length-1),"C");
+  ["w","h"].forEach((p,i)=>{link("C",p+"0");chain(p,[world,home][i].length);link(p+([world,home][i].length-1),"o0");});
+  chain("o",old.length);link("o"+(old.length-1),"G");
   for(const n of Object.values(N))if(n.type==="card")n.text="カードを1枚もらえる";
   // 年代（駒の見た目）: 0こども 1わかもの 2おとな 3シニア
   for(const n of Object.values(N))n.age=/^[yS]/.test(n.id)?0:/^[ckd]/.test(n.id)?1:/^[oG]/.test(n.id)?3:2;
@@ -1161,11 +1163,12 @@ function lobbyView(){
 }
 
 const TW=64,TH=74,PAD=36;
-function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+(n.y+2.4)*TH;}
+const MAXX=Math.max(...Object.values(N).map(n=>n.x)),MAXY=Math.max(...Object.values(N).map(n=>n.y));
+function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+n.y*TH;}
 const TYPE_COLOR={choice:"#d0ebff",meet:"#ffdeeb",date:"#fcc2d7",propose:"#faa2c1",jobchange:"#a5d8ff",start:"#ffe3e3",card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
 function gameShell(){
   const app=$("#app");
-  const W=PAD*2+11*TW,H=PAD*2+13.9*TH+18;
+  const W=PAD*2+MAXX*TW,H=PAD*2+MAXY*TH+18;
   let lines="",tiles="";
   for(const n of Object.values(N))for(const m of n.next.map(id=>N[id]))lines+=`<line x1="${tx(n)}" y1="${ty(n)}" x2="${tx(m)}" y2="${ty(m)}" stroke="var(--line)" stroke-width="8" stroke-linecap="round"/>`;
   for(const n of Object.values(N)){
