@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ミライすごろく</title>
-<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/mqtt.min.js"></script>
 <style>
 :root{
   --bg:#fff8ef; --panel:#ffffff; --ink:#2b2420; --sub:#7a6d63; --line:#e8dccd;
@@ -77,6 +77,13 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
 .wheel-box svg{width:100%;height:100%}
 #wheel{transition:transform 1.4s cubic-bezier(.15,.75,.2,1);transform-origin:50% 50%}
 .pointer{position:absolute;left:50%;top:-4px;transform:translateX(-50%);width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:18px solid var(--ink)}
+.handbox{width:100%;display:grid;gap:6px;margin-top:8px;text-align:left}
+.hand{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+.cardbtn{display:grid;gap:2px;text-align:left;background:linear-gradient(160deg,#fff7e6,#ffe8cc);color:#3b2f25;border:1px solid #f5c58b;padding:8px;font-weight:500;transition:transform .15s}
+.cardbtn:not(:disabled):hover{transform:translateY(-3px) rotate(-1deg)}
+.cardbtn .ci{font-size:22px}.cardbtn b{font-size:14px}.cardbtn small{font-size:11px;color:#7a5b3a;line-height:1.35}
+.cardbtn:disabled{opacity:.7}
+.nums{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
 .log{max-height:220px;overflow:auto;font-size:13px;display:grid;gap:4px}
 .log div{border-bottom:1px dashed var(--line);padding-bottom:3px}
 .event{position:fixed;left:50%;top:18%;transform:translate(-50%,-10px);opacity:0;pointer-events:none;transition:all .25s;z-index:20;min-width:260px;max-width:min(92vw,380px);text-align:center}
@@ -142,8 +149,8 @@ const M=(a,label)=>({amount:a,text:label});
   car.forEach((d,i)=>T("k"+i,1+i,1,d[0],d[1],d[2],d[3]));
   drm.forEach((d,i)=>T("d"+i,1+i,2,d[0],d[1],d[2],d[3]));
   const main1=[["payday","給料日","💰"],["marry","結婚","💒",{stop:true}],["money","新婚旅行","🏝️",M(-80,"新婚旅行で南の島へ")],
-    ["payday","給料日","💰"],["money","ペット","🐶",M(-20,"子犬を家族にむかえた")],["baby","赤ちゃん","👶",{n:1}],["lottery","宝くじ","🎟️"],
-    ["payday","給料日","💰"],["house","マイホーム","🏠"],["money","車を買う","🚗",M(-150,"ファミリーカーを買った")],["baby","ふたご","👶👶",{n:2}],
+    ["payday","給料日","💰"],["money","ペット","🐶",M(-20,"子犬を家族にむかえた")],["house","マイホーム","🏠",{stop:true}],["lottery","宝くじ","🎟️"],
+    ["payday","給料日","💰"],["baby","赤ちゃん","👶",{n:1}],["money","車を買う","🚗",M(-150,"ファミリーカーを買った")],["baby","ふたご","👶👶",{n:2}],
     ["payday","給料日","💰"],["dream","ダーツ大会","🎯"]];
   const m1pos=[[11,1],[11,3.1]];for(let x=10;x>=0;x--)m1pos.push([x,3.1]);
   main1.forEach((d,i)=>T("m"+i,m1pos[i][0],m1pos[i][1],d[0],d[1],d[2],d[3]));
@@ -199,6 +206,8 @@ const M=(a,label)=>({amount:a,text:label});
   link("w9","o0");link("h9","o0");
   for(let i=0;i<old.length-1;i++)link("o"+i,"o"+(i+1));
   link("o"+(old.length-1),"G");
+  // カードのマス
+  ["k3","d4","c5","m4","r5","s1","n6","n20","w6","h1","o3","o7","o19"].forEach(id=>Object.assign(N[id],{type:"card",label:"カード",icon:"🃏",amount:undefined,text:"カードを1枚もらえる"}));
   // 年代（駒の見た目）: 0こども 1わかもの 2おとな 3シニア
   for(const n of Object.values(N))n.age=n.id==="S"?0:/^[ckd]/.test(n.id)?1:/^[oG]/.test(n.id)?3:2;
 })();
@@ -210,73 +219,73 @@ const man=v=>(v<0?"-":"")+Math.abs(Math.round(v)).toLocaleString()+"万円";
 const rnd=n=>1+Math.floor(Math.random()*n);
 const spinMax=()=>(S&&S.settings&&S.settings.spinMax)||10;
 // ルーレットを回して 0〜1 の割合も返す（コース設定で目の最大値が変わるため）
-function roll(p){const r=rnd(spinMax());S.lastSpin={seq:++S.seq,pid:p.id,value:r,sub:true};return{r,f:r/spinMax()};}
+function roll(p){const r=rnd(spinMax());fx({k:"spin",pid:p.id,value:r});return{r,f:r/spinMax()};}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function store(kind,key,val){try{const s=kind==="s"?sessionStorage:localStorage;if(val===undefined)return s.getItem(key);if(val===null)s.removeItem(key);else s.setItem(key,val);}catch(e){return null}}
 let myId=store("s","mirai-id");if(!myId){myId="p"+Math.random().toString(36).slice(2,10);store("s","mirai-id",myId);}
 const params=new URLSearchParams(location.search);
 const LOCAL=params.get("local")==="1"; // 同じPCのタブ同士でテストするモード
-const PEER_PREFIX="mirai-sugoroku-v1-";
+// 公開MQTTブローカー（WebSocket）を中継に使う。ブラウザ同士の直接通信(WebRTC)より、家のWi-Fiや携帯回線でもつながりやすい。
+const BROKERS=params.get("broker")?[params.get("broker")]:["wss://broker.emqx.io:8084/mqtt","wss://broker.hivemq.com:8884/mqtt","wss://test.mosquitto.org:8081/mqtt"];
+const TOPIC=code=>"mirai-sugoroku/v2/"+code;
 
 // ================== 通信レイヤー ==================
 // ホストが正しい状態を持ち、参加者は「操作」を送って「状態」を受け取る。
-function peerErrText(e){
-  const t=e&&e.type;
-  if(t==="browser-incompatible")return "このブラウザはオンライン対戦に対応していません。SafariかChromeの最新版で開いてください。";
-  if(t==="network"||t==="server-error"||t==="socket-error"||t==="socket-closed")return "通信サーバーに接続できませんでした（"+t+"）。少し待ってページを再読み込みしてください。";
-  return "接続でエラーが起きました（"+(t||(e&&e.message)||"不明")+"）。ページを再読み込みしてください。";
-}
 const Net={
-  mode:null, peer:null, conns:new Map(), conn:null, bc:null,
+  mode:null, client:null, bc:null, code:null, bi:0,
+  // ブローカーにつなぐ。つながらなければ次の候補を試す（ホストのみ）。
+  connect(i,opts,onConnect,onFail){
+    if(!window.mqtt){onFail("通信ライブラリを読み込めませんでした。ネット接続を確認してください。");return;}
+    let done=false;
+    const c=mqtt.connect(BROKERS[i],Object.assign({clientId:"mirai-"+myId+"-"+Math.random().toString(36).slice(2,6),clean:true,connectTimeout:7000,reconnectPeriod:2000,keepalive:30},opts));
+    const timer=setTimeout(()=>{if(!done){done=true;try{c.end(true)}catch(e){}onFail("timeout");}},8000);
+    c.on("connect",()=>{if(!done){done=true;clearTimeout(timer);this.client=c;this.bi=i;onConnect(c);}else if(this.client===c&&this.onReconnect)this.onReconnect();});
+    c.on("error",e=>console.warn("mqtt",e&&e.message));
+  },
   host(code,onMsg,onReady,onFail){
-    this.mode="host";
+    this.mode="host";this.code=code;
     if(LOCAL){
       this.bc=new BroadcastChannel("mirai-"+code);
       this.bc.onmessage=e=>{const d=e.data;if(d.to==="host")onMsg(d.from,d.msg);};
       setTimeout(onReady,0);return;
     }
-    if(!window.Peer){onFail("通信ライブラリを読み込めませんでした。ネット接続を確認してください。");return;}
-    try{this.peer=new Peer(PEER_PREFIX+code);}catch(e){onFail(peerErrText(e));return;}
-    let opened=false;
-    const timer=setTimeout(()=>{if(!opened)onFail("通信サーバーに接続できませんでした（10秒たっても応答なし）。ネット接続を確認して、ページを再読み込みしてください。");},10000);
-    this.peer.on("open",()=>{opened=true;clearTimeout(timer);onReady();});
-    this.peer.on("error",e=>{console.warn(e);if(e.type==="unavailable-id"){clearTimeout(timer);onFail("taken");}else if(e.type!=="peer-unavailable"&&!opened){clearTimeout(timer);onFail(peerErrText(e));}});
-    this.peer.on("disconnected",()=>{try{this.peer.reconnect()}catch(e){}});
-    this.peer.on("connection",conn=>{
-      conn.on("data",d=>{if(d&&d.from){this.conns.set(d.from,conn);onMsg(d.from,d.msg);}});
-      conn.on("close",()=>{for(const [id,c] of this.conns)if(c===conn){this.conns.delete(id);onMsg(id,{t:"leave"});}});
-    });
+    const start=params.get("b")!=null?+params.get("b"):0;
+    const tryAt=k=>{
+      if(k>=BROKERS.length){onFail("通信サーバーに接続できませんでした。ネット接続を確認して、ページを再読み込みしてください。");return;}
+      const i=(start+k)%BROKERS.length;
+      this.connect(i,{will:{topic:TOPIC(code)+"/c",payload:JSON.stringify({to:"*",msg:{t:"hostgone"}}),qos:0,retain:false}},c=>{
+        c.on("message",(t,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}if(d&&d.from&&d.msg)onMsg(d.from,d.msg);});
+        c.subscribe(TOPIC(code)+"/h",{qos:1},err=>{if(err)onFail("通信サーバーでエラーが起きました。");else onReady();});
+      },()=>tryAt(k+1));
+    };
+    tryAt(0);
   },
+  pub(msg){const t=TOPIC(this.code)+"/c";this.client&&this.client.publish(t,JSON.stringify(msg),{qos:1});},
   broadcast(msg){
     if(LOCAL){this.bc&&this.bc.postMessage({to:"*",msg});return;}
-    for(const c of this.conns.values()){try{if(c.open)c.send(msg)}catch(e){}}
+    this.pub({to:"*",msg});
   },
   sendTo(id,msg){
     if(LOCAL){this.bc&&this.bc.postMessage({to:id,msg});return;}
-    const c=this.conns.get(id);if(c&&c.open)c.send(msg);
+    this.pub({to:id,msg});
   },
   join(code,onMsg,onOpen,onFail){
-    this.mode="client";
+    this.mode="client";this.code=code;
     if(LOCAL){
       this.bc=new BroadcastChannel("mirai-"+code);
       this.bc.onmessage=e=>{const d=e.data;if(d.to==="*"||d.to===myId)onMsg(d.msg);};
       setTimeout(onOpen,0);return;
     }
-    if(!window.Peer){onFail("通信ライブラリを読み込めませんでした。ネット接続を確認してください。");return;}
-    try{this.peer=new Peer();}catch(e){onFail(peerErrText(e));return;}
-    let opened=false;
-    const timer=setTimeout(()=>{if(!opened)onFail("通信サーバーに接続できませんでした（10秒たっても応答なし）。ネット接続を確認して、ページを再読み込みしてください。");},10000);
-    this.peer.on("open",()=>{opened=true;clearTimeout(timer);
-      const conn=this.peer.connect(PEER_PREFIX+code,{reliable:true});this.conn=conn;
-      conn.on("open",onOpen);
-      conn.on("data",onMsg);
-      conn.on("close",()=>onFail("ホストとの接続が切れました。ページを再読み込みすると再参加できます。"));
-    });
-    this.peer.on("error",e=>{console.warn(e);clearTimeout(timer);if(e.type==="peer-unavailable")onFail("ルームが見つかりません。ホストがページを開いているか確認してください。");else onFail(peerErrText(e));});
+    const i=Math.min(+(params.get("b")||0),BROKERS.length-1);
+    this.connect(i,{will:{topic:TOPIC(code)+"/h",payload:JSON.stringify({from:myId,msg:{t:"leave"}}),qos:0,retain:false}},c=>{
+      c.on("message",(t,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}if(d&&(d.to==="*"||d.to===myId))onMsg(d.msg);});
+      c.subscribe(TOPIC(code)+"/c",{qos:1},err=>{if(err)onFail("通信サーバーでエラーが起きました。");else onOpen();});
+    },()=>onFail("通信サーバーに接続できませんでした。ネット接続を確認して、ページを再読み込みしてください。"));
+    this.onReconnect=onOpen;
   },
   send(msg){
     if(LOCAL){this.bc&&this.bc.postMessage({to:"host",from:myId,msg});return;}
-    if(this.conn&&this.conn.open)this.conn.send({from:myId,msg});
+    this.client&&this.client.publish(TOPIC(this.code)+"/h",JSON.stringify({from:myId,msg}),{qos:1});
   }
 };
 
@@ -285,12 +294,15 @@ let S=null;           // 現在の状態（ホストは正本、参加者は受�
 let isHost=false;
 let joined=false;
 
-function newState(code){return{code,settings:{spinMax:6},phase:"lobby",players:[],turn:0,stage:"spin",pending:null,seq:0,lastSpin:null,lastMove:null,lastEvent:null,log:[],retired:0,hostId:myId};}
+function newState(code){return{code,settings:{spinMax:6},phase:"lobby",players:[],turn:0,stage:"spin",pending:null,seq:0,fx:[],log:[],retired:0,hostId:myId};}
 const cur=()=>S.players[S.turn];
 const byId=id=>S.players.find(p=>p.id===id);
 function log(t){S.log.unshift(t);S.log=S.log.slice(0,40);}
-function ev(p,icon,title,text){S.lastEvent={seq:++S.seq,pid:p.id,icon,title,text};log(p.name+"："+title+(text?"（"+text+"）":""));}
+// 演出（ルーレット・移動・できごと）を順番に記録する。画面側はこの順に再生してから数字を反映する。
+function fx(o){o.seq=++S.seq;S.fx=(S.fx||[]).concat(o).slice(-40);}
+function ev(p,icon,title,text){fx({k:"event",pid:p.id,icon,title,text});log(p.name+"："+title+(text?"（"+text+"）":""));}
 function addMoney(p,v){p.money+=v;}
+function dealStart(p){const ks=Object.keys(CARDS).filter(k=>k!=="snipe"&&k!=="swap");p.hand=[pick(ks),pick(ks)];Object.assign(p,{shield:0,bonus:false,blocked:false,mod:null,cardUsed:false});}
 function addPlayer(id,name,cpu){
   if(S.players.length>=6)return false;
   S.players.push({id,name:name.slice(0,12)||"プレイヤー",color:COLORS[S.players.length],cpu:!!cpu,pos:"S",money:200,job:null,children:0,married:false,house:null,retired:false,score:null,online:true});
@@ -307,7 +319,7 @@ function hostHandle(from,msg){
     commit();return;
   }
   if(msg.t==="leave"){const p=byId(from);if(p){p.online=false;commit();}return;}
-  if(msg.t==="hello"){Net.sendTo(from,{t:"state",s:S});return;}
+  if(msg.t==="hello"){const p=byId(from);if(p&&!p.online){p.online=true;commit();}else Net.sendTo(from,{t:"state",s:S});return;}
   if(msg.t==="act")act(from,msg.a);
 }
 
@@ -315,11 +327,18 @@ function act(pid,a){
   if(S.phase!=="play")return;
   const p=cur();if(!p||p.id!==pid)return;
   if(a.type==="spin"&&S.stage==="spin"){
-    const v=rnd(spinMax());
-    S.lastSpin={seq:++S.seq,pid,value:v};
-    S.pending={remaining:v,path:[p.pos]};
-    log(p.name+" はルーレットで "+v+" を出した");
-    moveOn(p);
+    const raw=rnd(spinMax());
+    fx({k:"spin",pid,value:raw});
+    let v=raw;const notes=[];
+    if(p.mod==="dash"){v+=3;notes.push("🚀ダッシュで+3");}
+    if(p.mod==="half"){v=Math.ceil(v/2);notes.push("🐢ちょい進みで半分");}
+    if(p.blocked){v=Math.ceil(v/2);p.blocked=false;notes.push("⛔通せんぼされて半分");}
+    p.mod=null;
+    log(p.name+" はルーレットで "+raw+" を出した"+(notes.length?"（"+notes.join("・")+" → "+v+"マス）":""));
+    if(notes.length)fx({k:"toast",pid,text:notes.join("・")+" → "+v+"マス進む"});
+    startMove(p,v);
+  }else if(a.type==="card"&&S.stage==="spin"&&!p.cardUsed){
+    if(!playCard(p,a))return;
   }else if(a.type==="branch"&&S.stage==="branch"){
     if(!N[p.pos].next.includes(a.to))return;
     step(p,a.to);moveOn(p);
@@ -339,7 +358,8 @@ function step(p,to){
   if(n.stop)S.pending.remaining=0;
   else if(n.type==="payday"&&S.pending.remaining>0)payday(p,true);
 }
-function emitMove(p){if(S.pending.path.length>1)S.lastMove={seq:++S.seq,pid:p.id,path:S.pending.path.slice()};S.pending.path=[p.pos];}
+function startMove(p,v){S.pending={remaining:v,path:[p.pos]};moveOn(p);}
+function emitMove(p){if(S.pending.path.length>1)fx({k:"move",pid:p.id,path:S.pending.path.slice()});S.pending.path=[p.pos];}
 function moveOn(p){
   while(S.pending.remaining>0){
     const n=N[p.pos];
@@ -352,12 +372,23 @@ function moveOn(p){
   if(resolve(p,N[p.pos])!=="wait")endTurn();
 }
 function payday(p,passing){
-  const s=p.job?p.job.salary:0;
+  let s=p.job?p.job.salary:0;
+  if(!passing&&p.bonus&&s){s*=2;p.bonus=false;log(p.name+" のボーナスカードで給料2倍！");}
   addMoney(p,s);
   if(passing)log(p.name+" は給料日を通過して +"+man(s));
   else ev(p,"💰","給料日",p.job?p.job.name+"の給料 +"+man(s):"まだ仕事がないので給料なし");
 }
+const SHIELDABLE=["money","perchild","tax","invest","dream","lottery"];
 function resolve(p,n){
+  const before=p.money;
+  const r=resolve2(p,n);
+  if(p.shield&&SHIELDABLE.includes(n.type)&&p.money<before){
+    const lost=before-p.money;p.money=before;p.shield--;
+    ev(p,"🛡️","保険カードで守った！","-"+man(lost)+" をふせいだ");
+  }
+  return r;
+}
+function resolve2(p,n){
   const others=S.players.filter(o=>o!==p&&!o.retired);
   switch(n.type){
     case "money":addMoney(p,n.amount);ev(p,n.icon,n.label,n.text+" "+(n.amount>=0?"+":"")+man(n.amount));break;
@@ -367,7 +398,8 @@ function resolve(p,n){
       {const j=pick(n.tier===2?JOBS2:JOBS1);p.job={name:j.name,salary:j.salary};ev(p,"💼","就職！",j.name+"になった（給料 "+man(j.salary)+"）");break;}
     case "dream":dreamChance(p,n);break;
     case "marry":{p.married=true;let g=0;others.forEach(o=>{addMoney(o,-30);g+=30;});addMoney(p,g);ev(p,"💒","結婚おめでとう！","みんなからご祝儀 +"+man(g));break;}
-    case "baby":{p.children+=n.n;let g=0;others.forEach(o=>{addMoney(o,-10*n.n);g+=10*n.n;});addMoney(p,g);ev(p,"👶",n.n>1?"ふたごが生まれた！":"赤ちゃんが生まれた！","みんなからお祝い +"+man(g));break;}
+    case "baby":if(!p.house){ev(p,"🏠",n.label,"家がないので子どもはまだ…（家を買ってから！）");break;}
+      {p.children+=n.n;let g=0;others.forEach(o=>{addMoney(o,-10*n.n);g+=10*n.n;});addMoney(p,g);ev(p,"👶",n.n>1?"ふたごが生まれた！":"赤ちゃんが生まれた！","みんなからお祝い +"+man(g));break;}
     case "perchild":{const v=n.amount*p.children;addMoney(p,v);ev(p,n.icon,n.label,p.children?n.text+" "+(v>=0?"+":"")+man(v):"子どもがいないので何もなし");break;}
     case "lottery":{const {r,f}=roll(p);const w=f===1?(spinMax()===10?500:300):f>=0.8?100:0;addMoney(p,w);ev(p,"🎟️","宝くじ","ルーレット "+r+"："+(w?"当たり！ +"+man(w):"はずれ…"));break;}
     case "invest":{const {r,f}=roll(p);const v=Math.round((f-0.55)*10)*50;addMoney(p,v);ev(p,n.icon,n.label,"ルーレット "+r+"："+(v>=0?"+":"")+man(v));break;}
@@ -375,11 +407,46 @@ function resolve(p,n){
     case "tax":{const v=Math.max(30,p.job?p.job.salary:0);addMoney(p,-v);ev(p,"🧾","税金","-"+man(v));break;}
     case "house":
       if(p.house){ev(p,"🏠","マイホーム","もう家を持っている");break;}
-      if(p.cpu){const ok=HOUSES.filter(h=>h.cost<=p.money);const h=ok.length&&Math.random()<.8?ok[ok.length-1]:null;
+      if(p.cpu){const ok=HOUSES.filter(h=>h.cost<=p.money);const h=ok.length?ok[ok.length-1]:Math.random()<.7?HOUSES[0]:null;
         if(h){p.house={name:h.name,cost:h.cost};addMoney(p,-h.cost);ev(p,"🏠","マイホーム購入",h.name+" を "+man(h.cost)+" で買った");}else log(p.name+" は家を買わなかった");break;}
       S.stage="house";return "wait";
     case "goal":retire(p);break;
+    case "card":drawCard(p);break;
   }
+}
+// ================== カード ==================
+const CARDS={
+  dash:{name:"ダッシュ",icon:"🚀",desc:"このターン、ルーレットの目+3",w:3},
+  half:{name:"ちょい進み",icon:"🐢",desc:"このターン、ルーレットの目が半分（止まりたいマスをねらう）",w:2},
+  snipe:{name:"ねらい撃ち",icon:"🎯",desc:"ルーレットを回さず、好きな数だけ進む",w:1,num:true},
+  shield:{name:"保険",icon:"🛡️",desc:"次にお金が減るできごとを1回だけ無効にする",w:3},
+  bonus:{name:"ボーナス",icon:"💴",desc:"次に止まった給料日の給料が2倍",w:2},
+  collect:{name:"取り立て",icon:"🧾",desc:"好きな人から80万円もらう",w:2,target:true},
+  swap:{name:"転職交換",icon:"🔄",desc:"好きな人と仕事（給料）を交換する",w:1,target:true},
+  block:{name:"通せんぼ",icon:"⛔",desc:"好きな人の次のルーレットの目を半分にする",w:2,target:true}};
+const HAND_MAX=5;
+function drawCard(p){
+  if((p.hand||[]).length>=HAND_MAX){ev(p,"🃏","カード","手札がいっぱいでもらえなかった");return;}
+  const pool=[];for(const [k,c] of Object.entries(CARDS))for(let i=0;i<c.w;i++)pool.push(k);
+  const k=pick(pool);p.hand=(p.hand||[]).concat(k);
+  ev(p,CARDS[k].icon,"カードゲット！","「"+CARDS[k].name+"」："+CARDS[k].desc);
+}
+function playCard(p,a){
+  const i=(p.hand||[]).indexOf(a.card);if(i<0)return false;
+  const c=CARDS[a.card];const t=c.target?S.players.find(o=>o.id===a.target&&o!==p):null;
+  if(c.target&&!t)return false;
+  if(c.num&&!(a.num>=1&&a.num<=spinMax()))return false;
+  p.hand.splice(i,1);p.cardUsed=true;
+  switch(a.card){
+    case "dash":case "half":p.mod=a.card;ev(p,c.icon,"カード「"+c.name+"」",c.desc);break;
+    case "shield":p.shield=(p.shield||0)+1;ev(p,c.icon,"カード「"+c.name+"」","次にお金が減るできごとを1回ふせぐ");break;
+    case "bonus":p.bonus=true;ev(p,c.icon,"カード「"+c.name+"」","次に止まった給料日の給料が2倍");break;
+    case "collect":{const v=80;addMoney(t,-v);addMoney(p,v);ev(p,c.icon,"カード「"+c.name+"」",t.name+" から +"+man(v));break;}
+    case "swap":{const j=p.job;p.job=t.job;t.job=j;ev(p,c.icon,"カード「"+c.name+"」",t.name+" と仕事を交換！ → "+(p.job?p.job.name+"（給料 "+man(p.job.salary)+"）":"無職"));break;}
+    case "block":t.blocked=true;ev(p,c.icon,"カード「"+c.name+"」",t.name+" の次のルーレットの目が半分に");break;
+    case "snipe":ev(p,c.icon,"カード「"+c.name+"」",a.num+" マス進む");log(p.name+" はねらい撃ちで "+a.num+" マス進む");startMove(p,a.num);break;
+  }
+  return true;
 }
 function setDream(p,i){const d=DREAMS[i];p.job={name:d.name,salary:d.salary,dream:i,icon:d.icon};ev(p,d.icon,"夢への第一歩！",d.name+"になった（給料 "+man(d.salary)+"）");}
 function dreamChance(p,n){
@@ -404,6 +471,7 @@ function retire(p){
 }
 function endTurn(){
   S.stage="spin";S.pending=null;
+  const cp=cur();if(cp){cp.cardUsed=false;cp.mod=null;}
   if(S.players.every(p=>p.retired)){S.phase="end";log("全員ゴール！ゲーム終了");return;}
   do{S.turn=(S.turn+1)%S.players.length;}while(cur().retired);
 }
@@ -416,15 +484,33 @@ let cpuTimer=null;
 function scheduleCpu(){
   clearTimeout(cpuTimer);
   if(!isHost||S.phase!=="play")return;
-  const p=cur();if(!p.cpu&&!(p.autoplay))return;
-  const delay=1500+(S.lastMove?S.lastMove.path.length*260:0);
-  cpuTimer=setTimeout(()=>{p.autoplay=false;botAct(p);},delay);
+  const p=cur();if(!p.cpu)return;
+  // 画面の演出が終わってから少し待って動く
+  const tick=()=>{if(animating||queue.length){cpuTimer=setTimeout(tick,300);return;}cpuTimer=setTimeout(()=>botAct(p.id),900*SPEED);};
+  cpuTimer=setTimeout(tick,300);
 }
-function botAct(p){
-  if(S.stage==="spin")act(p.id,{type:"spin"});
+function botCard(p){
+  if(p.cardUsed||!(p.hand||[]).length||Math.random()<0.35)return null;
+  const others=S.players.filter(o=>o!==p&&!o.retired);
+  const prog=o=>Object.keys(N).indexOf(o.pos);
+  const rich=S.players.filter(o=>o!==p).sort((a,b)=>b.money-a.money)[0];
+  for(const k of p.hand){
+    if(k==="shield"&&!p.shield)return{card:k};
+    if(k==="bonus"&&!p.bonus&&p.job)return{card:k};
+    if(k==="collect"&&rich)return{card:k,target:rich.id};
+    if(k==="swap"){const best=S.players.filter(o=>o!==p&&o.job&&(!p.job||o.job.salary>p.job.salary+20)).sort((a,b)=>b.job.salary-a.job.salary)[0];if(best)return{card:k,target:best.id};}
+    if(k==="block"&&others.length){const lead=others.sort((a,b)=>prog(b)-prog(a))[0];return{card:k,target:lead.id};}
+    if(k==="dash")return{card:k};
+    if(k==="snipe")return{card:k,num:spinMax()};
+  }
+  return null;
+}
+function botAct(id){
+  const p=S.players.find(o=>o.id===id);if(!p||S.phase!=="play"||cur()!==p)return;
+  if(S.stage==="spin"){const c=botCard(p);if(c)act(p.id,Object.assign({type:"card"},c));else act(p.id,{type:"spin"});}
   else if(S.stage==="branch")act(p.id,{type:"branch",to:pick(N[p.pos].next)});
   else if(S.stage==="job")act(p.id,{type:"job",idx:rnd(DREAMS.length)-1});
-  else if(S.stage==="house"){const ok=HOUSES.map((h,i)=>[h,i]).filter(([h])=>h.cost<=p.money);act(p.id,{type:"house",idx:ok.length?ok[ok.length-1][1]:-1});}
+  else if(S.stage==="house"){const ok=HOUSES.map((h,i)=>[h,i]).filter(([h])=>h.cost<=p.money);act(p.id,{type:"house",idx:ok.length?ok[ok.length-1][1]:0});}
 }
 
 // ================== 入口 ==================
@@ -432,28 +518,32 @@ function startHost(name,resume){
   isHost=true;joined=true;
   if(location.protocol==="file:"&&!LOCAL){setBanner("ファイルを直接開いているため友達を招待できません。https://kazuya83.github.io/mirai-sugoroku/ から開いてください。");return;}
   appView("preparing");
-  let code=resume?resume.code:Math.random().toString(36).slice(2,7).toUpperCase().replace(/[^A-Z0-9]/g,"X");
+  let code=resume?resume.code:[...Array(6)].map(()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join("");
   const go=()=>{
     Net.host(code,hostHandle,()=>{
       if(resume){S=resume.s;S.hostId=myId;const me=S.players.find(p=>p.id===resume.s.hostId);if(me)me.id=myId;S.players.forEach(p=>{if(!p.cpu&&p.id!==myId)p.online=false;});}
       else{S=newState(code);addPlayer(myId,name,false);}
-      history.replaceState(null,"","?room="+code+(LOCAL?"&local=1":"")+"&host=1");
+      history.replaceState(null,"",location.pathname+"?room="+code+inviteExtra()+"&host=1");
       commit();
     },err=>{
-      if(err==="taken"&&!resume){code=Math.random().toString(36).slice(2,7).toUpperCase();Net.peer.destroy();go();}
-      else if(err==="taken"){setBanner("前のルームの接続がまだ残っています。10秒ほど待ってから再読み込みしてください。");}
-      else{setBanner(err);homeView();}
+      setBanner(err);homeView();
     });
   };go();
 }
 function startClient(code,name){
   joined=true;
   appView("connecting");
+  let got=false,tries=0,helloTimer=null;
+  const hello=()=>{if(got)return;Net.send({t:"join",name});Net.send({t:"hello"});
+    if(++tries>5){setBanner("ルームが見つかりません。ホストがページを開いたままか、招待URLが正しいか確認してください。");return;}
+    helloTimer=setTimeout(hello,3000);};
   Net.join(code,msg=>{
-    if(msg.t==="state"){S=msg.s;render();}
+    if(msg.t==="state"){if(!got){got=true;clearTimeout(helloTimer);setBanner("");}S=msg.s;render();}
     else if(msg.t==="reject"){setBanner(msg.reason);}
-  },()=>{Net.send({t:"join",name});Net.send({t:"hello"});store("l","mirai-name",name);},err=>{setBanner(err);});
+    else if(msg.t==="hostgone"){setBanner("ホストの接続が切れました。ホストがページを開き直すと続きから遊べます。");}
+  },()=>{got=false;tries=0;clearTimeout(helloTimer);hello();store("l","mirai-name",name);},err=>{setBanner(err);});
 }
+function inviteExtra(){return (LOCAL?"&local=1":"&b="+Net.bi+(params.get("broker")?"&broker="+encodeURIComponent(params.get("broker")):""))+(params.get("fast")?"&fast=1":"")+(params.get("no3d")?"&no3d=1":"");}
 function setBanner(t){$("#banner").innerHTML=t?'<div class="banner">'+esc(t)+'</div>':"";}
 
 // ================== 描画 ==================
@@ -491,42 +581,42 @@ function rulesHtml(){return `<div class="card home rules"><details><summary>遊�
   <p>スタートでは「大学コース（お金がかかるけど給料の高い仕事）」「就職コース（すぐ働ける）」「夢追いコース（ダーツプロ・スポーツ選手・YouTuberなど。給料は低いけど🎯夢チャンスのマスで大きく稼げる）」から選びます。途中の分かれ道では「チャレンジロード（大きく増減）」か「のんびりロード（堅実）」を選べます。</p>
   <p>そのあとも「人生の転機」で「世界チャレンジロード」か「ふるさとロード」を選び、老後のマスを進んでゴールを目指します。キャラクターは進むほど こども→わかもの→おとな→シニア と成長し、結婚相手や子どもも一緒に歩きます。</p>
   <p>ロビーで「じっくりコース（ルーレット1〜6・30分以上）」か「さくさくコース（1〜10・短め）」を選べます。</p>
+  <p>👶赤ちゃんのマスは、🏠家を持っていないと子どもが生まれません。結婚のあとの🏠マイホームのマスは必ず止まります。</p>
+  <p>🃏カード：はじめに2枚もらえて、🃏のマスでも1枚もらえます（最大5枚）。自分の番にルーレットを回す前に1枚使えます。「ダッシュ（+3）」「ちょい進み（半分）」「ねらい撃ち（好きな数だけ進む）」で止まるマスをねらったり、「保険」「ボーナス」でお金を守ったり、「取り立て」「転職交換」「通せんぼ」でライバルのじゃまをしたり。使いどころが勝負です。</p>
   <p>全員がゴールしたら、所持金で順位を決めます。家はゴール時にルーレットで決まる値段で売れます。借金（マイナス）は最後に1.2倍になります。</p></details></div>`;}
 
-let shownSpin=0,shownMove=0,shownEvent=0,wheelRot=0,animPos={},animating=false;
+// 画面に出す状態 V は、演出（ルーレット→移動→できごと）を再生し終えてから S に追いつく。
+// こうすることで、ルーレット中に次の人の番やお金の増減が先に見えてしまわない。
+let V=null,shownSeq=0,wheelRot=0,animPos={},animating=false,animFocus=null;
 const queue=[];
+const clone=o=>JSON.parse(JSON.stringify(o));
 function render(){
   if(!S)return;
   $("#hdrCode").textContent="ルーム "+S.code;
-  if(S.phase==="lobby")return lobbyView();
+  if(S.phase==="lobby"){V=clone(S);shownSeq=S.seq;return lobbyView();}
   if(!$("#boardSvg"))gameShell();
-  // 新しいアニメーションを順番に積む
-  if(S.lastSpin&&S.lastSpin.seq>shownSpin){shownSpin=S.lastSpin.seq;}
-  const items=[];
-  if(S.lastSpin&&S.lastSpin._q!==true)items.push({k:"spin",o:S.lastSpin});
-  if(S.lastMove)items.push({k:"move",o:S.lastMove});
-  if(S.lastEvent)items.push({k:"event",o:S.lastEvent});
-  items.sort((a,b)=>a.o.seq-b.o.seq).forEach(it=>{
-    if(it.k==="spin"&&it.o.seq>(render.qs||0)){render.qs=it.o.seq;queue.push(it);}
-    if(it.k==="move"&&it.o.seq>shownMove){shownMove=it.o.seq;queue.push(it);}
-    if(it.k==="event"&&it.o.seq>shownEvent){shownEvent=it.o.seq;queue.push(it);}
-  });
-  S.players.forEach(p=>{if(!(p.id in animPos))animPos[p.id]=p.pos;});
+  if(!V||V.phase==="lobby"){V=clone(S);shownSeq=Math.max(shownSeq,S.seq);animPos={};}
+  const items=(S.fx||[]).filter(o=>o.seq>shownSeq);
+  if(items.length)shownSeq=items[items.length-1].seq;
+  items.forEach(o=>queue.push(o));
+  queue.push({k:"apply",s:clone(S)});
   if(!animating)runQueue();
-  drawSide();drawTokens();
 }
 async function runQueue(){
-  animating=true;drawControls();
+  animating=true;
   while(queue.length){
     const it=queue.shift();
-    if(it.k==="spin")await spinWheel(it.o.value);
-    else if(it.k==="move"){for(const id of it.o.path.slice(1)){animPos[it.o.pid]=id;drawTokens();await wait(260);}}
-    else if(it.k==="event")await showEvent(it.o);
+    if(it.k==="apply"){if(queue.some(q=>q.k==="apply"))continue;V=it.s;V.players.forEach(p=>animPos[p.id]=p.pos);animFocus=null;drawTokens();drawSide();continue;}
+    animFocus=it.pid;drawControls();
+    if(it.k==="spin")await spinWheel(it.value);
+    else if(it.k==="move"){for(const id of it.path.slice(1)){animPos[it.pid]=id;drawTokens();await wait(260);}}
+    else if(it.k==="event")await showEvent(it);
+    else if(it.k==="toast")await showEvent({pid:it.pid,icon:"✨",title:"",text:it.text},1100);
   }
-  S.players.forEach(p=>animPos[p.id]=p.pos);
-  animating=false;drawTokens();drawSide();
+  animating=false;drawControls();
 }
-const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const SPEED=params.get("fast")?0.08:1; // テスト用の早送り
+const wait=ms=>new Promise(r=>setTimeout(r,ms*SPEED));
 function spinWheel(v){
   const w=$("#wheel");if(!w)return wait(0);
   const st=360/spinMax(),center=(v-1)*st+st/2;
@@ -535,17 +625,17 @@ function spinWheel(v){
   w.style.transform="rotate("+wheelRot+"deg)";
   return wait(1500).then(()=>{$("#spinVal").textContent=v;});
 }
-function showEvent(e){
+function showEvent(e,ms){
   const p=byId(e.pid);const el=$("#event");
   el.innerHTML=`<div class="big">${esc(e.icon)}</div><div class="ttl">${esc(e.title)}</div><div class="muted">${esc(p?p.name:"")}</div><div>${esc(e.text||"")}</div>`;
   el.classList.add("show");
   if(mounted3D){const k=fxOf(e);const m=(e.text||"").match(/[+-][\d,]+万円/g);if(k)B3.effect(e.pid,k,m?m[m.length-1]:"");}
-  return wait(1700).then(()=>{el.classList.remove("show");return wait(200);});
+  return wait(ms||1900).then(()=>{el.classList.remove("show");return wait(200);});
 }
 
 function lobbyView(){
   const app=$("#app");
-  const url=location.origin+location.pathname+"?room="+S.code+(LOCAL?"&local=1":"");
+  const url=location.origin+location.pathname+"?room="+S.code+inviteExtra();
   const me=byId(myId);
   app.innerHTML=`<div class="card home">
     <h2>ロビー（ルーム ${esc(S.code)}）</h2>
@@ -565,14 +655,14 @@ function lobbyView(){
     $("#cp").onclick=()=>{const i=$("#inv");i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value).catch(()=>{});$("#cp").textContent="コピーしました";};
     app.querySelectorAll("[data-course]").forEach(b=>{if(+b.dataset.course===spinMax())b.style.borderColor="var(--accent)";b.onclick=()=>{S.settings={spinMax:+b.dataset.course};commit();};});
     $("#cpu").onclick=()=>{const n=S.players.filter(p=>p.cpu).length+1;addPlayer("cpu"+Date.now(),"CPU"+n,true);commit();};
-    $("#start").onclick=()=>{S.phase="play";S.turn=0;log("ゲームスタート！");commit();};
+    $("#start").onclick=()=>{S.phase="play";S.turn=0;S.players.forEach(dealStart);log("ゲームスタート！みんなカードを2枚ずつもらった");commit();};
     app.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>{S.players=S.players.filter(p=>p.id!==b.dataset.kick);S.players.forEach((p,i)=>p.color=COLORS[i]);if(b.dataset.kick.startsWith("p"))Net.sendTo(b.dataset.kick,{t:"reject",reason:"ホストにルームから外されました。"});commit();});
   }
 }
 
 const TW=64,TH=74,PAD=36;
 function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+n.y*TH;}
-const TYPE_COLOR={dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
+const TYPE_COLOR={card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
 function gameShell(){
   const app=$("#app");
   const W=PAD*2+11*TW,H=PAD*2+11.5*TH+18;
@@ -610,6 +700,7 @@ function gameShell(){
 let mounted3D=false;
 function mount3D(){
   const st=$("#stage");if(!st||mounted3D)return;
+  if(params.get("no3d")){st.classList.add("flat");return;}
   if(!window.B3){if(!window.WebGLRenderingContext)st.classList.add("flat");return;}
   mounted3D=B3.mount(st,N,TYPE_COLOR);
   if(!mounted3D)st.classList.add("flat");
@@ -617,6 +708,7 @@ function mount3D(){
 }
 window.on3DReady=()=>mount3D();
 setTimeout(()=>{const st=$("#stage");if(st&&!mounted3D)st.classList.add("flat");},8000);
+if(params.get("no3d"))window.on3DReady=()=>{};
 function fxOf(e){
   if(/結婚|赤ちゃん|ふたご|就職|夢への|大成功|ゴール|昇進|購入/.test(e.title))return "party";
   const m=(e.text||"").match(/([+-])([\d,]+)万円(?!.*[+-][\d,]+万円)/);
@@ -625,12 +717,11 @@ function fxOf(e){
 function drawTokens(){
   const g=$("#tokens");if(!g)return;
   if(mounted3D){
-    let focus=S.phase==="play"?cur().id:null;
-    if(queue.length||animating){const mv=S.lastMove;if(mv)focus=mv.pid;}
-    B3.setPositions(S.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,children:p.children};}),focus);
+    const focus=animFocus||(V.phase==="play"?V.players[V.turn].id:null);
+    B3.setPositions(V.players.map((p,i)=>{const pos=animPos[p.id]||p.pos;return{id:p.id,idx:i,color:p.color,pos,age:N[pos].age,married:p.married,children:p.children};}),focus);
   }
   const groups={};
-  S.players.forEach((p,i)=>{const pos=animPos[p.id]||p.pos;(groups[pos]=groups[pos]||[]).push({p,i});});
+  V.players.forEach((p,i)=>{const pos=animPos[p.id]||p.pos;(groups[pos]=groups[pos]||[]).push({p,i});});
   let h="";
   for(const [pos,list] of Object.entries(groups)){const n=N[pos];
     list.forEach(({p},k)=>{const ox=(k%3-1)*16,oy=k<3?-20:-4;
@@ -639,40 +730,63 @@ function drawTokens(){
 }
 function drawSide(){
   if(!$("#players"))return;
-  $("#players").innerHTML=S.players.map((p,i)=>`<div class="pc ${S.phase==="play"&&i===S.turn?"active":""}">
+  $("#players").innerHTML=V.players.map((p,i)=>`<div class="pc ${V.phase==="play"&&i===V.turn?"active":""}">
     <div class="top"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.id===myId?' <span class="tag">あなた</span>':""}${p.cpu?' <span class="tag">CPU</span>':""}${!p.online&&!p.cpu?' <span class="tag">切断中</span>':""}
       <span class="money ${p.money<0?"neg":""}">${man(p.money)}</span></div>
-    <div class="muted">${p.job?(p.job.icon||"")+esc(p.job.name)+"（給料 "+man(p.job.salary)+"）":"無職"}${p.married?"・既婚":""}${p.children?"・子ども"+p.children+"人":""}${p.house?"・"+esc(p.house.name):""}${p.retired?"・🏁ゴール済み":""}・${["こども","わかもの","おとな","シニア"][N[animPos[p.id]||p.pos].age]}</div></div>`).join("");
-  $("#log").innerHTML=S.log.map(t=>`<div>${esc(t)}</div>`).join("");
+    <div class="muted">${p.job?(p.job.icon||"")+esc(p.job.name)+"（給料 "+man(p.job.salary)+"）":"無職"}${p.married?"・既婚":""}${p.children?"・子ども"+p.children+"人":""}${p.house?"・"+esc(p.house.name):""}${p.retired?"・🏁ゴール済み":""}・${["こども","わかもの","おとな","シニア"][N[animPos[p.id]||p.pos].age]}</div>
+    <div class="muted">🃏カード ${(p.hand||[]).length}枚${p.shield?"・🛡️保険中":""}${p.bonus?"・💴ボーナス待ち":""}${p.blocked?"・⛔通せんぼされ中":""}</div></div>`).join("");
+  $("#log").innerHTML=V.log.map(t=>`<div>${esc(t)}</div>`).join("");
   drawControls();
 }
 function drawControls(){
   const c=$("#controls");if(!c)return;
-  if(S.phase==="end"){
-    const ranked=S.players.slice().sort((a,b)=>b.score-a.score);
+  if(V.phase==="end"){
+    const ranked=V.players.slice().sort((a,b)=>b.score-a.score);
     c.innerHTML=`<div class="result"><div class="who">🎉 結果発表</div>${ranked.map((p,i)=>`<div class="r"><span class="rank">${i+1}</span><span class="dot" style="background:${p.color}"></span><span>${esc(p.name)}</span><span class="money" style="margin-left:auto;font-weight:700">${man(p.score)}</span></div>`).join("")}
       ${isHost?'<button id="again">同じメンバーでもう一回</button>':'<div class="muted">ホストがもう一回を選ぶと再スタートします。</div>'}</div>`;
     if(isHost)$("#again").onclick=()=>{S.players.forEach(p=>Object.assign(p,{pos:"S",money:200,job:null,children:0,married:false,house:null,retired:false,score:null}));
-      Object.assign(S,{phase:"play",turn:0,stage:"spin",pending:null,retired:0,log:["もう一回スタート！"]});animPos={};commit();};
+      S.players.forEach(dealStart);Object.assign(S,{phase:"play",turn:0,stage:"spin",pending:null,retired:0,log:["もう一回スタート！"]});commit();};
     return;
   }
-  const p=cur();const mine=p.id===myId;
+  const p=V.players[V.turn];const mine=p.id===myId;
   let h=`<div class="who"><span class="dot" style="display:inline-block;vertical-align:middle;background:${p.color}"></span> ${esc(p.name)} の番</div>`;
   if(animating)h+=`<div class="muted">…</div>`;
-  else if(mine&&S.stage==="spin")h+=`<button id="spin" style="width:100%;font-size:18px">ルーレットを回す</button>`;
-  else if(mine&&S.stage==="branch"){const n=N[p.pos];h+=`<div class="muted">あと ${S.pending.remaining} マス。どっちに進む？</div><div class="choices">${n.next.map((id,i)=>`<button data-br="${id}">${esc(n.labels[i])}</button>`).join("")}</div>`;}
-  else if(mine&&S.stage==="job")h+=`<div class="muted">どの夢に挑戦する？</div><div class="choices">${DREAMS.map((d,i)=>`<button data-j="${i}">${d.icon} ${esc(d.name)}（給料 ${man(d.salary)}）</button>`).join("")}</div>`;
-  else if(mine&&S.stage==="house")h+=`<div class="muted">家を買いますか？（所持金 ${man(p.money)}・足りなければ借金）</div><div class="choices">${HOUSES.map((x,i)=>`<button data-h="${i}">${esc(x.name)}（${man(x.cost)}）</button>`).join("")}<button class="ghost" data-h="-1">買わない</button></div>`;
+  else if(mine&&V.stage==="spin")h+=`<button id="spin" style="width:100%;font-size:18px">ルーレットを回す</button>`+handHtml(p);
+  else if(mine&&V.stage==="branch"){const n=N[p.pos];h+=`<div class="muted">あと ${V.pending.remaining} マス。どっちに進む？</div><div class="choices">${n.next.map((id,i)=>`<button data-br="${id}">${esc(n.labels[i])}</button>`).join("")}</div>`;}
+  else if(mine&&V.stage==="job")h+=`<div class="muted">どの夢に挑戦する？</div><div class="choices">${DREAMS.map((d,i)=>`<button data-j="${i}">${d.icon} ${esc(d.name)}（給料 ${man(d.salary)}）</button>`).join("")}</div>`;
+  else if(mine&&V.stage==="house")h+=`<div class="muted">家を買いますか？（所持金 ${man(p.money)}・足りなければ借金）</div><div class="choices">${HOUSES.map((x,i)=>`<button data-h="${i}">${esc(x.name)}（${man(x.cost)}）</button>`).join("")}<button class="ghost" data-h="-1">買わない</button></div>`;
   else{h+=`<div class="muted">${p.cpu?"CPUが考えています…":"待っています…"}</div>`;
     if(isHost&&!p.cpu)h+=`<button class="ghost" id="proxy" style="margin-top:6px">${esc(p.name)} の代わりに進める</button>`;}
-  if(!isHost&&!byId(myId))h+=`<div class="muted">観戦中</div>`;
+  if(!isHost&&!V.players.some(o=>o.id===myId))h+=`<div class="muted">観戦中</div>`;
+  else if(!(mine&&V.stage==="spin")){const me=V.players.find(o=>o.id===myId);if(me&&(me.hand||[]).length)h+=handHtml(me,true);}
   c.innerHTML=h;
   const send=a=>{if(isHost)act(myId,a);else Net.send({t:"act",a});};
   const sb=$("#spin");if(sb)sb.onclick=()=>{sb.disabled=true;send({type:"spin"});};
   c.querySelectorAll("[data-br]").forEach(b=>b.onclick=()=>send({type:"branch",to:b.dataset.br}));
   c.querySelectorAll("[data-j]").forEach(b=>b.onclick=()=>send({type:"job",idx:+b.dataset.j}));
   c.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>send({type:"house",idx:+b.dataset.h}));
-  const px=$("#proxy");if(px)px.onclick=()=>botAct(p);
+  const px=$("#proxy");if(px)px.onclick=()=>botAct(p.id);
+  c.querySelectorAll("[data-card]").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.card,cd=CARDS[k];
+    if(cd.target||cd.num){cardSel=k;drawControls();return;}
+    send({type:"card",card:k});});
+  c.querySelectorAll("[data-tgt]").forEach(b=>b.onclick=()=>{const k=cardSel;cardSel=null;send({type:"card",card:k,target:b.dataset.tgt});});
+  c.querySelectorAll("[data-num]").forEach(b=>b.onclick=()=>{const k=cardSel;cardSel=null;send({type:"card",card:k,num:+b.dataset.num});});
+  const cx=$("#cardCancel");if(cx)cx.onclick=()=>{cardSel=null;drawControls();};
+}
+let cardSel=null;
+function handHtml(p,viewOnly){
+  const hand=p.hand||[];
+  if(!viewOnly&&cardSel&&hand.includes(cardSel)){
+    const cd=CARDS[cardSel];
+    const body=cd.num?`<div class="muted">何マス進む？</div><div class="nums">${[...Array(spinMax())].map((_,i)=>`<button data-num="${i+1}">${i+1}</button>`).join("")}</div>`
+      :`<div class="muted">だれに使う？</div><div class="choices">${V.players.filter(o=>o.id!==p.id).map(o=>`<button data-tgt="${esc(o.id)}"><span class="dot" style="display:inline-block;vertical-align:middle;background:${o.color}"></span> ${esc(o.name)}（${man(o.money)}${o.job?"・"+esc(o.job.name):""}）</button>`).join("")}</div>`;
+    return `<div class="handbox"><div class="who">${cd.icon} ${esc(cd.name)}</div>${body}<button class="ghost" id="cardCancel">やめる</button></div>`;
+  }
+  if(!hand.length)return `<div class="muted" style="margin-top:6px">手札なし（🃏のマスでカードがもらえます）</div>`;
+  const used=p.cardUsed;
+  return `<div class="handbox"><div class="muted">${viewOnly?"あなたの手札":used?"このターンはもうカードを使いました":"カードを使う（1ターン1枚・ルーレットの前に）"}</div>
+    <div class="hand">${hand.map(k=>{const cd=CARDS[k];return `<button class="cardbtn" data-card="${k}" ${viewOnly||used?"disabled":""} title="${esc(cd.desc)}"><span class="ci">${cd.icon}</span><b>${esc(cd.name)}</b><small>${esc(cd.desc)}</small></button>`;}).join("")}</div></div>`;
 }
 
 homeView();
