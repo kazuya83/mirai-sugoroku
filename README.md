@@ -17,3 +17,8 @@
 
 ## 公開
 GitHub Pages（Settings → Pages → Branch: `main` / root）で公開できます。
+
+## 3D表示について
+- 盤面は three.js による3D表示です（`game3d.js`）。右上のマップをタップすると全体表示に切り替わります。
+- WebGLが使えない環境では自動で2Dのマップ表示になります。
+- `vendor/` には three.js と PeerJS（どちらもMITライセンス）を同梱しています。
