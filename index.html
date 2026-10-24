@@ -269,18 +269,18 @@ const HOUSES=[{name:"こぢんまりハウス",cost:200},{name:"ひろびろマ�
 // デートの相手（オリジナルキャラクター）。好きなタイプの能力が高いほど好感度が上がりやすい。
 // gender: "f"=女性 "m"=男性。プレイヤーの性別とちがう相手が候補になる。
 const PARTNERS=[
-  {name:"ハルカ",hair:"long",hc:"#6b3e26",acc:"beret",bg:"#ffdeeb",g:"f",icon:"🎨",like:"sense",desc:"イラストレーター。センスのある人にひかれる"},
-  {name:"ミオ",hair:"bob",hc:"#2b1d14",acc:"glasses",bg:"#d0ebff",g:"f",icon:"🔬",like:"int",desc:"大学の研究員。知的な会話が好き"},
-  {name:"アオイ",hair:"ponytail",hc:"#1c2a4a",bg:"#e5dbff",g:"f",icon:"🎯",like:"sense",desc:"ダーツバーの看板スタッフ。ダーツがうまい人に弱い"},
-  {name:"サクラ",hair:"wavy",hc:"#a0522d",acc:"headset",bg:"#fff3bf",g:"f",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
-  {name:"ナツキ",hair:"pixie",hc:"#8d5524",acc:"headband",bg:"#d3f9d8",g:"f",icon:"🏐",like:"body",desc:"バレーボール選手。いっしょに体を動かせる人が好き"},
-  {name:"リコ",hair:"ponytail",hc:"#5c3d2e",acc:"cap",bg:"#e6fcf5",skin:"#f1c9a5",g:"f",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
-  {name:"ソウタ",hair:"short",hc:"#1f1f1f",bg:"#ffe3e3",skin:"#e8b48f",g:"m",icon:"🚒",like:"body",desc:"消防士。たよれる体力自慢が好き"},
-  {name:"カイト",hair:"short",hc:"#2b1d14",acc:"glasses",bg:"#dbe4ff",g:"m",icon:"🔭",like:"int",desc:"天文台の研究員。知的な会話が好き"},
-  {name:"ハヤト",hair:"spiky",hc:"#6b4226",bg:"#e5dbff",g:"m",icon:"🎯",like:"sense",desc:"ダーツプロをめざす青年。ダーツがうまい人に弱い"},
-  {name:"レン",hair:"mash",hc:"#3d2b1f",acc:"headset",bg:"#fff3bf",g:"m",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
-  {name:"ユウキ",hair:"short",hc:"#8d5524",acc:"cap",bg:"#e6fcf5",skin:"#eebd96",g:"m",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
-  {name:"シュン",hair:"mash",hc:"#a0522d",bg:"#fff4e6",g:"m",icon:"🪑",like:"sense",desc:"家具デザイナー。センスのある人にひかれる"}];
+  {name:"ハルカ",pay:50,hair:"long",hc:"#6b3e26",acc:"beret",bg:"#ffdeeb",g:"f",icon:"🎨",like:"sense",desc:"イラストレーター。センスのある人にひかれる"},
+  {name:"ミオ",pay:70,hair:"bob",hc:"#2b1d14",acc:"glasses",bg:"#d0ebff",g:"f",icon:"🔬",like:"int",desc:"大学の研究員。知的な会話が好き"},
+  {name:"アオイ",pay:40,hair:"ponytail",hc:"#1c2a4a",bg:"#e5dbff",g:"f",icon:"🎯",like:"sense",desc:"ダーツバーの看板スタッフ。ダーツがうまい人に弱い"},
+  {name:"サクラ",pay:55,hair:"wavy",hc:"#a0522d",acc:"headset",bg:"#fff3bf",g:"f",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
+  {name:"ナツキ",pay:60,hair:"pixie",hc:"#8d5524",acc:"headband",bg:"#d3f9d8",g:"f",icon:"🏐",like:"body",desc:"バレーボール選手。いっしょに体を動かせる人が好き"},
+  {name:"リコ",pay:45,hair:"ponytail",hc:"#5c3d2e",acc:"cap",bg:"#e6fcf5",skin:"#f1c9a5",g:"f",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
+  {name:"ソウタ",pay:60,hair:"short",hc:"#1f1f1f",bg:"#ffe3e3",skin:"#e8b48f",g:"m",icon:"🚒",like:"body",desc:"消防士。たよれる体力自慢が好き"},
+  {name:"カイト",pay:70,hair:"short",hc:"#2b1d14",acc:"glasses",bg:"#dbe4ff",g:"m",icon:"🔭",like:"int",desc:"天文台の研究員。知的な会話が好き"},
+  {name:"ハヤト",pay:40,hair:"spiky",hc:"#6b4226",bg:"#e5dbff",g:"m",icon:"🎯",like:"sense",desc:"ダーツプロをめざす青年。ダーツがうまい人に弱い"},
+  {name:"レン",pay:55,hair:"mash",hc:"#3d2b1f",acc:"headset",bg:"#fff3bf",g:"m",icon:"🎙️",like:"charm",desc:"ラジオDJ。話していて楽しい人が好き"},
+  {name:"ユウキ",pay:45,hair:"short",hc:"#8d5524",acc:"cap",bg:"#e6fcf5",skin:"#eebd96",g:"m",icon:"⛺",like:"body",desc:"キャンプ好きの保育士。アウトドア派が好き"},
+  {name:"シュン",pay:55,hair:"mash",hc:"#a0522d",bg:"#fff4e6",g:"m",icon:"🪑",like:"sense",desc:"家具デザイナー。センスのある人にひかれる"}];
 // 2Dの顔イラスト（SVG）。expr: "n"=ふつう "h"=よろこび "s"=かなしい
 function faceSVG(L,expr,size){
   L=L||{};expr=expr||"n";const sk=L.skin||"#f8d6bc",hc=L.hc||"#3a2a1f",hs=L.hair||"short",sz=size||64;
@@ -466,6 +466,10 @@ const CH=key=>({key});
   chain("n",main2.length);link("n"+(main2.length-1),"C");
   ["w","h"].forEach((p,i)=>{link("C",p+"0");chain(p,[world,home][i].length);link(p+([world,home][i].length-1),"o0");});
   chain("o",old.length);link("o"+(old.length-1),"G");
+  // 仕事や能力でできごとが変わるマス
+  const over=(id,t)=>Object.assign(N[id],{type:t,label:t==="jobev"?"お仕事イベント":"特技イベント",icon:t==="jobev"?"📣":"🌟",amount:undefined,text:undefined,st:undefined,key:undefined});
+  ["k11","d8","m13","r17","n17","n31","w13","h6","o21","s10"].forEach(id=>over(id,"jobev"));
+  ["c13","m20","s4","n22","n34","h14","o4","o25","y34"].forEach(id=>over(id,"talent"));
   for(const n of Object.values(N))if(n.type==="card")n.text="カードを1枚もらえる";
   // 年代（駒の見た目）: 0こども 1わかもの 2おとな 3シニア
   for(const n of Object.values(N))n.age=/^[yS]/.test(n.id)?0:/^[ckd]/.test(n.id)?1:/^[oG]/.test(n.id)?3:2;
@@ -642,14 +646,65 @@ function moveOn(p){
   S.stage="resolve";
   if(resolve(p,N[p.pos])!=="wait")endTurn();
 }
+// お仕事イベント：今の仕事ごとにちがうできごと。仕事に関係する能力が高いほど、いいことの金額がふえる。
+const JOB_EV={
+  "パン職人":[["新作パンに行列ができた！",80,{sense:1}],["地元の雑誌で紹介された",50,{charm:1}],["早起きしすぎて寝不足…",-10]],
+  "配達ドライバー":[["繁忙期の手当が出た",60],["無事故で表彰された",40],["渋滞続きでクタクタ…",-10,{body:1}]],
+  "美容師":[["芸能人のヘアメイクを担当！",100,{sense:1}],["指名ナンバーワンに",60,{charm:1}],["高級ハサミを新調",-30]],
+  "ショップ店員":[["売上トップで表彰",60,{charm:1}],["セールで大忙し",30,{body:1}],["店長に昇格！",50]],
+  "大工":[["大きなお屋敷を建てた",100],["伝統建築に挑戦",60,{sense:1}],["腰を痛めてしまった…",-40]],
+  "ダーツバー店員":[["お客さんとのダーツ対決で全勝",40,{sense:1}],["ダーツイベントを主催して大成功",80,{charm:1}],["常連のプロにコツを教わった",0,{sense:2}]],
+  "事務員":[["業務改善でほめられた",40,{int:1}],["決算期の残業代",30],["資格をとった",0,{int:2}]],
+  "エンジニア":[["作ったアプリが大ヒット！",200,{int:1}],["社内ハッカソンで優勝",80],["バグ対応で徹夜…",-20,{int:1}]],
+  "お医者さん":[["むずかしい手術に成功！",150,{int:1}],["学会で発表",60,{charm:1}],["夜勤続きでヘトヘト…",-20]],
+  "研究者":[["論文が有名な科学雑誌に！",120,{int:1}],["大発見でニュースに",250],["研究費が足りない…",-50]],
+  "パイロット":[["国際線の機長に",150],["航空ショーで大歓声",60,{charm:1}],["悪天候で欠航続き…",-20]],
+  "デザイナー":[["有名ブランドとコラボ！",150,{sense:1}],["デザイン賞を受賞",100],["しめきり地獄…",-20]],
+  "スポーツトレーナー":[["担当選手が金メダル！",150],["トレーニング本を出版",80,{int:1}],["自分も鍛えなおした",0,{body:2}]],
+  "弁護士":[["大きな裁判に勝訴！",200,{int:1}],["テレビのコメンテーターに",80,{charm:1}],["むずかしい案件で徹夜…",-20]],
+  "ダーツプロ":[["有名プロとエキシビションマッチ！",100,{sense:1}],["ダーツブランドとスポンサー契約",150],["練習しすぎて肩を痛めた…",-40]],
+  "プロサッカー選手":[["日本代表に選ばれた！",150,{charm:1}],["海外クラブへ移籍",200],["ケガでリハビリ…",-60]],
+  "プロ野球選手":[["オールスターに出場！",120],["CMに出演",100,{charm:1}],["スランプで二軍へ…",-40]],
+  "プロバスケ選手":[["ダンクコンテストで優勝！",100,{body:1}],["海外リーグからオファー",150],["足首をねんざ…",-40]],
+  "YouTuber":[["人気YouTuberとコラボ！",120,{charm:1}],["企業案件の動画が好評",100],["登録者50万人記念ライブ",80,{charm:1}],["撮影機材を買いかえ",-50,{sense:1}]],
+  "プロゲーマー":[["有名ストリーマーとコラボ配信！",100,{charm:1}],["ゲーム会社とスポンサー契約",150],["新作ゲームについていけない…",-30,{int:1}]],
+  "フリーター":[["バイト先で正社員にさそわれた",30,{charm:1}],["シフトが増えた",40],["ひまな時間に資格の勉強",0,{int:1}]]};
+// 特技イベント：いちばん高い能力で起きることが変わる
+const TALENT_EV={
+  sense:[["絵が展覧会で入選",""],["デザインコンペで優勝","🏆"]],
+  body:[["市民マラソンで入賞",""],["トライアスロンで表彰台","🏆"]],
+  int:[["クイズ番組に出演",""],["特許をとって使用料が入る","🏆"]],
+  charm:[["街頭インタビューで人気者に",""],["地元のCMに出演","🏆"]]};
+function jobEvent(p,n){
+  const j=p.job;if(!j){ev(p,"📣",n.label,"まだ仕事がないので、何も起きなかった");return;}
+  const list=JOB_EV[j.name]||JOB_EV["フリーター"];const e=pick(list);
+  let v=e[1],extra="";
+  if(v>0){const job=[...JOBS1,...JOBS2,...DREAMS].find(x=>x.name===j.name);
+    const over=job?Object.entries(job.req).reduce((a,[k,need])=>a+Math.max(0,p.st[k]-need),0):0;
+    const b=Math.round(v*Math.min(1,over/10));if(b>0){v+=b;extra="（能力が高いのでさらに +"+man(b)+"）";}}
+  addMoney(p,v);const t=e[2]?applyEff(p,e[2]):"";
+  ev(p,(j.icon||"📣"),j.name+"のお仕事イベント",e[0]+" "+(v?(v>0?"+":"")+man(v):"")+extra+(t?"・"+t:""),v<0?"loss":t&&!v?"stat":"gain");
+}
+function talentEvent(p,n){
+  const ks=Object.keys(ST);const k=ks.slice().sort((a,b)=>p.st[b]-p.st[a])[0];const lv=p.st[k];
+  const big=lv>=14;const e=TALENT_EV[k][big?1:0];const v=lv*(big?8:5);
+  addMoney(p,v);const t=applyEff(p,{[k]:1});
+  ev(p,ST_ICON[k],"特技イベント（"+ST[k]+lv+"）",e[0]+(e[1]?" "+e[1]:"")+" +"+man(v)+"・"+t,"gain");
+}
 function payday(p,passing){
   let s=p.job?p.job.salary:0;
   if(!passing&&p.bonus&&s){s*=2;p.bonus=false;log(p.name+" のボーナスカードで給料2倍！");}
-  addMoney(p,s);
-  if(passing)log(p.name+" は給料日を通過して +"+man(s));
-  else ev(p,"💰","給料日",p.job?p.job.name+"の給料 +"+man(s):"まだ仕事がないので給料なし");
+  // 結婚相手の給料と、大きくなった子どもからの仕送りも入る
+  const sp=p.married&&PARTNERS[p.spouse]?PARTNERS[p.spouse].pay||0:0;
+  const kid=p.children&&/^[whoG]/.test(p.pos)?p.children*15:0;
+  addMoney(p,s+sp+kid);
+  const parts=[p.job?p.job.name+"の給料 +"+man(s):"自分の給料なし（仕事がない）"];
+  if(sp)parts.push(PARTNERS[p.spouse].name+"の給料 +"+man(sp));
+  if(kid)parts.push("子ども"+p.children+"人から仕送り +"+man(kid));
+  if(passing)log(p.name+" は給料日を通過して +"+man(s+sp+kid)+"（"+parts.join("・")+"）");
+  else ev(p,"💰","給料日",parts.join("・")+"　合計 +"+man(s+sp+kid));
 }
-const SHIELDABLE=["money","perchild","tax","invest","dream","lottery"];
+const SHIELDABLE=["jobev","money","perchild","tax","invest","dream","lottery"];
 function resolve(p,n){
   const before=p.money;
   const r=resolve2(p,n);
@@ -669,7 +724,7 @@ function resolve2(p,n){
     case "choice":{const c=CHOICES[n.key];return ask(p,{kind:"event",title:c.title,icon:c.icon,opts:c.opts.map(o=>({label:o.label,desc:effText(o.eff),eff:o.eff}))});}
     case "meet":return ask(p,{kind:"meet",title:n.label+"：だれとデートする？",icon:"💘",
       text:p.married?"":p.love?"いまは "+PARTNERS[p.love.who].name+"（好感度"+p.love.aff+"）とデート中。乗りかえると好感度はリセット":"",
-      opts:p.married?[{label:"家族を大切にする",desc:"魅力+1",eff:{charm:1}}]:candidates(p).map(([q,i])=>{const t=takenBy(i,p);return{label:q.icon+" "+q.name,desc:t?"💍 "+t.name+" と結婚しているので選べない":q.desc+"（好き："+ST[q.like]+"）",who:i,disabled:!!t};}).concat([{label:"今はひとりを楽しむ",desc:"魅力+1",eff:{charm:1}}])});
+      opts:p.married?[{label:"家族を大切にする",desc:"魅力+1",eff:{charm:1}}]:candidates(p).map(([q,i])=>{const t=takenBy(i,p);return{label:q.icon+" "+q.name,desc:t?"💍 "+t.name+" と結婚しているので選べない":q.desc+"（好き："+ST[q.like]+"・給料"+man(q.pay)+"）",who:i,disabled:!!t};}).concat([{label:"今はひとりを楽しむ",desc:"魅力+1",eff:{charm:1}}])});
     case "date":
       if(!p.married&&p.love&&lostLove(p))break;
       if(p.married){addMoney(p,-20);const t=applyEff(p,{charm:1});ev(p,"💑","夫婦でおでかけ","-"+man(20)+"・"+t,"love");break;}
@@ -700,6 +755,8 @@ function resolve2(p,n){
       S.stage="house";return "wait";
     case "goal":retire(p);break;
     case "card":drawCard(p);break;
+    case "jobev":jobEvent(p,n);break;
+    case "talent":talentEvent(p,n);break;
   }
 }
 // ================== カード ==================
@@ -1165,7 +1222,7 @@ function lobbyView(){
 const TW=64,TH=74,PAD=36;
 const MAXX=Math.max(...Object.values(N).map(n=>n.x)),MAXY=Math.max(...Object.values(N).map(n=>n.y));
 function tx(n){return PAD+n.x*TW;} function ty(n){return PAD+n.y*TH;}
-const TYPE_COLOR={choice:"#d0ebff",meet:"#ffdeeb",date:"#fcc2d7",propose:"#faa2c1",jobchange:"#a5d8ff",start:"#ffe3e3",card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
+const TYPE_COLOR={jobev:"#ffe066",talent:"#e5dbff",choice:"#d0ebff",meet:"#ffdeeb",date:"#fcc2d7",propose:"#faa2c1",jobchange:"#a5d8ff",start:"#ffe3e3",card:"#e5dbff",dream:"#ffec99",payday:"#ffe08a",job:"#a5d8ff",marry:"#ffc9de",baby:"#ffd8a8",house:"#b2f2bb",goal:"#ff8787",branch:"#d0bfff",invest:"#c5f6fa",lottery:"#fff3bf",tax:"#e9ecef"};
 function gameShell(){
   const app=$("#app");
   const W=PAD*2+MAXX*TW,H=PAD*2+MAXY*TH+18;
@@ -1240,7 +1297,7 @@ function drawSide(){
       <span class="money ${p.money<0?"neg":""}">${man(p.money)}</span></div>
     <div class="muted">${p.job?(p.job.icon||"")+esc(p.job.name)+"（給料 "+man(p.job.salary)+"）":"無職"}${p.married?"・既婚":""}${p.children?"・子ども"+p.children+"人":""}${p.house?"・"+esc(p.house.name):""}${p.retired?"・🏁ゴール済み":""}・${["こども","わかもの","おとな","シニア"][N[animPos[p.id]||p.pos].age]}</div>
     <div class="stats">${Object.keys(ST).map(k=>`<span title="${ST[k]}">${ST_ICON[k]}${ST[k]} <b>${p.st?p.st[k]:0}</b></span>`).join("")}</div>
-    <div class="muted">${p.married?partnerFace(p.spouse,"h",26)+" 💍 "+esc(PARTNERS[p.spouse].name)+" と結婚":p.love?partnerFace(p.love.who,"n",26)+" 💘 "+esc(PARTNERS[p.love.who].name)+" とデート中・好感度 <b>"+p.love.aff+"</b>":"💘 恋人なし"}</div>
+    <div class="muted">${p.married?partnerFace(p.spouse,"h",26)+" 💍 "+esc(PARTNERS[p.spouse].name)+" と結婚（給料 "+man(PARTNERS[p.spouse].pay||0)+"）":p.love?partnerFace(p.love.who,"n",26)+" 💘 "+esc(PARTNERS[p.love.who].name)+" とデート中・好感度 <b>"+p.love.aff+"</b>":"💘 恋人なし"}</div>
     <div class="muted">🃏カード ${(p.hand||[]).length}枚${p.shield?"・🛡️保険中":""}${p.bonus?"・💴ボーナス待ち":""}${p.blocked?"・⛔通せんぼされ中":""}</div></div>`).join("");
   $("#log").innerHTML=V.log.map(t=>`<div>${esc(t)}</div>`).join("");
   drawControls();
