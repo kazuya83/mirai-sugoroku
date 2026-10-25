@@ -8,10 +8,10 @@ const wx = n => (n.x - CX) * SP;
 const wz = n => (n.y - CY) * SP;
 
 let renderer, scene, camera, clock, container, nodes;
-let mode = "follow";           // "follow" 追いかける | "top" 真上 | "all" 全体 | "free" 自由に見回す
-// 自由カメラ：注視点・距離・向き（ドラッグで移動、ホイール/ピンチでズーム、右ドラッグ/2本指で回転）
-const free = { target: new THREE.Vector3(), dist: 16, yaw: 0, pitch: 0.95 };
-let onModeChange = null;
+let mode = "follow";           // "follow" 追いかける | "top" 真上 | "all" 全体
+let cursorId = null;           // 矢印キーで見ているマス（null なら手番のコマ）
+let zoomK = 1;                 // ホイールで近づく・離れる
+let cursorRing;
 // コマとカメラの間にある建物・木は消して、盤面が隠れないようにする
 const occ = []; let occTimer = 0, occOn = true;
 let focusId = null;
@@ -323,6 +323,8 @@ function buildWorld(typeColor) {
   BLOB = blobTex();
   marker = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshPhysicalMaterial({ color: "#ffd43b", emissive: "#b8860b", emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.2, clearcoat: 1 }));
   marker.scale.y = 1.5; scene.add(marker);
+  cursorRing = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.09, 10, 48), new THREE.MeshStandardMaterial({ color: "#1c7ed6", emissive: "#1971c2", emissiveIntensity: 0.8 }));
+  cursorRing.rotation.x = Math.PI / 2; cursorRing.visible = false; scene.add(cursorRing);
 }
 // 外周道路に沿って車を動かす
 function moveCars(dt) {
@@ -507,11 +509,16 @@ function animate() {
   for (const o of scene.children) if (o.userData.cloud) { o.position.x += o.userData.cloud * dt; if (o.position.x > 90) o.position.x = -90; }
   for (const n of Object.values(nodes)) if (n._flag) n._flag.rotation.y = Math.sin(tt * 2) * 0.15;
   let tp, tl;
-  if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 1.0, g.z); tp = new THREE.Vector3(g.x + 1.0, 5.6, g.z + 5.6); }
-  else if (mode === "top" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 0, g.z); tp = new THREE.Vector3(g.x, 17, g.z + 0.8); }
-  else if (mode === "free") { tl = free.target.clone(); tp = new THREE.Vector3(free.target.x + Math.sin(free.yaw) * Math.cos(free.pitch) * free.dist, free.target.y + Math.sin(free.pitch) * free.dist, free.target.z + Math.cos(free.yaw) * Math.cos(free.pitch) * free.dist); }
+  // 見る場所：矢印キーで選んだマス → 手番のコマ → だれかのコマ
+  let tgt = null;
+  if (cursorId && nodes[cursorId]) { const n = nodes[cursorId]; tgt = new THREE.Vector3(wx(n), n._top, wz(n)); }
+  else if (f) tgt = f.group.position;
+  else { const t0 = tokens.values().next().value; if (t0) tgt = t0.group.position; }
+  if (cursorRing) { cursorRing.visible = !!cursorId; if (cursorId && tgt) { cursorRing.position.set(tgt.x, tgt.y + 0.04, tgt.z); cursorRing.scale.setScalar(1 + Math.sin(tt * 5) * 0.06); } }
+  if (mode === "follow" && tgt) { tl = new THREE.Vector3(tgt.x, 1.0, tgt.z); tp = new THREE.Vector3(tgt.x + 1.0 * zoomK, 1 + 4.6 * zoomK, tgt.z + 5.6 * zoomK); }
+  else if (mode === "top" && tgt) { tl = new THREE.Vector3(tgt.x, 0, tgt.z); tp = new THREE.Vector3(tgt.x, 17 * zoomK, tgt.z + 0.8); }
   else { const D = Math.max(bounds.Z1 - bounds.Z0, (bounds.X1 - bounds.X0) * 1.25 / Math.max(0.6, camera.aspect)); tl = new THREE.Vector3(0, 0, D * 0.1); tp = new THREE.Vector3(0, D * 0.98, D * 0.66); }
-  const a = mode === "free" && dragging ? 1 : 1 - Math.exp(-dt * (mode === "free" ? 8 : 3));
+  const a = 1 - Math.exp(-dt * (cursorId ? 6 : 3));
   camPos.lerp(tp, a); camLook.lerp(tl, a);
   camera.position.copy(camPos); camera.lookAt(camLook);
   // 影はカメラの見ている場所のまわりだけ計算する
@@ -553,57 +560,9 @@ function updateOcclusion() {
     if (changed) o.im.instanceMatrix.needsUpdate = true;
   }
 }
-// マウス・タッチでカメラを動かす
-let dragging = false;
-function enterFree() {
-  if (mode === "free") return;
-  free.target.copy(camLook); free.target.y = 0;
-  const off = camPos.clone().sub(camLook);
-  free.dist = Math.max(4, Math.min(120, off.length()));
-  free.yaw = Math.atan2(off.x, off.z); free.pitch = Math.max(0.35, Math.min(1.5, Math.asin(off.y / off.length())));
-  mode = "free"; onModeChange && onModeChange("free");
-}
-function clampTarget() {
-  if (!bounds) return;
-  free.target.x = Math.max(bounds.X0 - 8, Math.min(bounds.X1 + 8, free.target.x));
-  free.target.z = Math.max(bounds.Z0 - 8, Math.min(bounds.Z1 + 8, free.target.z));
-}
-function pan(dxPx, dyPx) {
-  const k = free.dist / Math.max(300, container.clientHeight) * 1.6;
-  const sx = Math.cos(free.yaw), sz = -Math.sin(free.yaw); // 画面の右方向
-  const fx = -Math.sin(free.yaw), fz = -Math.cos(free.yaw); // 画面の奥方向
-  free.target.x += (-dxPx * sx + dyPx * fx) * k;
-  free.target.z += (-dxPx * sz + dyPx * fz) * k;
-  clampTarget();
-}
-function zoom(f) { free.dist = Math.max(4, Math.min(120, free.dist * f)); }
+// ホイールで近づく・離れる（追いかける・真上のとき）
 function bindControls(el) {
-  el.style.touchAction = "none";
-  const pts = new Map(); let last = null, rotating = false, pinch = null;
-  el.addEventListener("contextmenu", e => e.preventDefault());
-  el.addEventListener("pointerdown", e => {
-    el.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    last = { x: e.clientX, y: e.clientY }; rotating = e.button === 2 || e.shiftKey; dragging = false;
-    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
-  });
-  el.addEventListener("pointermove", e => {
-    if (!pts.has(e.pointerId)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2 && pinch) {
-      const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      enterFree(); dragging = true;
-      zoom(pinch.d / Math.max(1, d)); free.yaw -= ang - pinch.ang; pan(mx - pinch.mx, my - pinch.my);
-      pinch = { d, ang, mx, my }; return;
-    }
-    const dx = e.clientX - last.x, dy = e.clientY - last.y;
-    if (!dragging && Math.hypot(dx, dy) < 4) return;
-    enterFree(); dragging = true; last = { x: e.clientX, y: e.clientY };
-    if (rotating) { free.yaw -= dx * 0.008; free.pitch = Math.max(0.35, Math.min(1.5, free.pitch + dy * 0.006)); }
-    else pan(dx, dy);
-  });
-  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) setTimeout(() => dragging = false, 0); };
-  el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
-  el.addEventListener("wheel", e => { e.preventDefault(); enterFree(); zoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  el.addEventListener("wheel", e => { if (mode === "all") return; e.preventDefault(); zoomK = Math.max(0.45, Math.min(2.6, zoomK * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
 }
 
 const B3 = {
@@ -627,12 +586,9 @@ const B3 = {
       return true;
     } catch (e) { console.warn("3D無効", e); return false; }
   },
-  setMode(m) { if (m === "free") enterFree(); else mode = m; },
-  onMode(fn) { onModeChange = fn; },
-  // 盤面の座標（マスのx,y）を中心に見る
-  lookAtGrid(x, y) { enterFree(); free.target.set((x - CX) * SP, 0, (y - CY) * SP); clampTarget(); free.dist = Math.min(free.dist, 22); },
-  // 自由カメラのボタン操作
-  nudge(kind) { enterFree(); if (kind === "in") zoom(0.75); else if (kind === "out") zoom(1.33); else if (kind === "left") free.yaw += Math.PI / 4; else if (kind === "right") free.yaw -= Math.PI / 4; },
+  setMode(m) { mode = m; },
+  // 矢印キーで見るマス（null で手番のコマに戻る）
+  setCursor(id) { cursorId = id; if (id && mode === "all") mode = "follow"; },
   // list: [{id,idx,color,pos,age,married,spouse,children}]
   setPositions(list, focus) {
     if (!scene) return;

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ミライすごろく</title>
 <script src="vendor/mqtt.min.js"></script>
+<meta http-equiv="Cache-Control" content="no-cache">
 <style>
 :root{
   --bg:#fff8ef; --panel:#ffffff; --ink:#2b2420; --sub:#7a6d63; --line:#e8dccd;
@@ -56,11 +57,14 @@ header .code{margin-left:auto;font-size:13px;color:var(--sub)}
 .minimap .mmttl{font-size:11px;color:var(--sub);text-align:center}
 .camctl{position:absolute;left:10px;bottom:10px;display:flex;gap:6px}
 .camctl button{padding:6px 12px;font-size:13px;background:color-mix(in srgb,var(--panel) 90%,transparent);color:var(--ink);border:1px solid var(--line);font-weight:600}
-.camnav{position:absolute;left:10px;bottom:52px;display:none;gap:6px}
-.camnav button{width:38px;height:34px;padding:0;font-size:17px;background:color-mix(in srgb,var(--panel) 90%,transparent);color:var(--ink);border:1px solid var(--line);font-weight:700}
-.camhint{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:none;font-size:12px;padding:4px 10px;border-radius:99px;background:rgba(0,0,0,.55);color:#fff;pointer-events:none;white-space:nowrap;max-width:70%;overflow:hidden;text-overflow:ellipsis}
-.stage.freecam .camnav{display:flex}.stage.freecam .camhint{display:block}
-.stage.flat .camnav,.stage.flat .camhint{display:none!important}
+.dpad{position:absolute;left:10px;bottom:52px;display:none;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,34px);gap:4px}
+.dpad button{padding:0;font-size:15px;background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--ink);border:1px solid var(--line);font-weight:700}
+.dpad [data-dir=up]{grid-column:2;grid-row:1}.dpad [data-dir=left]{grid-column:1;grid-row:2}.dpad [data-dir=back]{grid-column:2;grid-row:2;font-size:11px}.dpad [data-dir=right]{grid-column:3;grid-row:2}.dpad [data-dir=down]{grid-column:2;grid-row:3}
+.tileinfo{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:none;max-width:min(70%,360px);padding:8px 14px;border-radius:14px;background:color-mix(in srgb,var(--panel) 94%,transparent);border:2px solid #1c7ed6;box-shadow:var(--shadow);text-align:center;font-size:13px;gap:2px}
+.tileinfo b{font-size:15px}.tileinfo span{color:var(--sub)}.tileinfo small{color:var(--sub);font-size:11px}
+.stage.looking .dpad{display:grid}.stage.looking .tileinfo{display:grid}
+@media (hover:none){.stage.looking .tileinfo small{display:none}}
+.stage.flat .dpad,.stage.flat .tileinfo,.stage.flat #lookBtn{display:none!important}
 .camctl button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .stage.flat{height:auto;background:none}
 .stage.flat .minimap{position:static;width:100%;max-width:none;border:0;box-shadow:none;cursor:default;background:none;padding:8px}
@@ -1197,6 +1201,36 @@ function showJobBook(){
   m.onclick=e=>{if(e.target===m)m.classList.remove("show");};
 }
 
+// 矢印キー（スマホは画面の矢印ボタン）で見るマスを動かす。コマ自体は動かない。
+let viewCursor=null;
+function cursorBase(){const p=V&&V.players&&(V.players.find(o=>o.id===myId)||V.players[V.turn]);return p?(animPos[p.id]||p.pos):"y0";}
+function setCursor(id){
+  viewCursor=id;if(window.B3&&mounted3D)B3.setCursor(id);
+  const st=$("#stage");if(st)st.classList.toggle("looking",!!id);
+  const lb=$("#lookBtn");if(lb){lb.classList.toggle("on",!!id);lb.textContent=id?"✕ 見るのをやめる":"🔍 マスを見る";}
+  const box=$("#tileInfo");if(!box)return;
+  if(!id){box.innerHTML="";return;}
+  const n=N[id];const here=V?V.players.filter(p=>(animPos[p.id]||p.pos)===id).map(p=>p.name):[];
+  const desc=n.text||({payday:"給料がもらえる",choice:"選択肢で能力が上がる",meet:"デートの相手と出会える",date:"デートで好感度アップ",propose:"プロポーズできる",house:"家を買える",baby:"子どもが生まれる（結婚＋家が必要）",jobchange:"転職のチャンス",job:"仕事を選ぶ",dream:"夢チャンス（ルーレット）",lottery:"宝くじ（ルーレット）",invest:"投資（ルーレット）",raise:"給料アップ",tax:"税金をはらう",jobev:"仕事ごとのできごと",talent:"いちばん高い能力でできごとが変わる",branch:"道が分かれる",goal:"ゴール！"}[n.type]||"");
+  box.innerHTML=`<b>${n.icon} ${esc(n.label)}</b>${desc?`<span>${esc(desc)}</span>`:""}${here.length?`<span>🧍 ${esc(here.join("・"))}</span>`:""}<small>矢印キーで移動・Escで戻る</small>`;
+}
+function moveCursor(dir){
+  if(dir==="back"){setCursor(null);return;}
+  let cur=viewCursor||cursorBase();
+  if(!dir){setCursor(cur);return;}
+  const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir];const c=N[cur];
+  let best=null,bs=1e9;
+  for(const n of Object.values(N)){if(n.id===cur)continue;const vx=n.x-c.x,vy=n.y-c.y;const along=vx*d[0]+vy*d[1];if(along<0.3)continue;
+    const perp=Math.abs(vx*d[1]-vy*d[0]);if(perp>along*1.2+0.2)continue;const sc=along+perp*2.5;if(sc<bs){bs=sc;best=n.id;}}
+  setCursor(best||cur);
+}
+document.addEventListener("keydown",e=>{
+  if(!$("#stage")||/INPUT|TEXTAREA|SELECT/.test(document.activeElement&&document.activeElement.tagName))return;
+  const dir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}[e.key];
+  if(dir){e.preventDefault();moveCursor(dir);}
+  else if(e.key==="Escape"&&viewCursor)setCursor(null);
+});
+
 function lobbyView(){
   const app=$("#app");
   const url=location.origin+location.pathname+"?room="+S.code+inviteExtra();
@@ -1247,10 +1281,10 @@ function gameShell(){
       <text x="${50+34*Math.cos(am)}" y="${50+34*Math.sin(am)}" text-anchor="middle" dominant-baseline="middle" font-size="${SM>6?10:13}" font-weight="700" fill="#5c3a12">${i+1}</text>`;}).join("");
   app.innerHTML=`<div class="game">
     <div class="card board"><div class="stage" id="stage">
-      <div class="minimap" id="minimap" title="タップした場所を見る"><div class="mmttl">マップ</div><svg id="boardSvg" viewBox="0 0 ${W} ${H}">${lines}${tiles}<g id="tokens"></g></svg></div>
-      <div class="camctl"><button data-cam="follow" class="on">追いかける</button><button data-cam="top">真上</button><button data-cam="all">全体</button><button data-cam="free">自由に見る</button></div>
-      <div class="camnav"><button data-nav="in" title="ズームイン">＋</button><button data-nav="out" title="ズームアウト">－</button><button data-nav="left" title="左に回す">⟲</button><button data-nav="right" title="右に回す">⟳</button></div>
-      <div class="camhint" id="camHint">ドラッグで移動・ホイールやピンチでズーム・右ドラッグ／2本指で回転</div>
+      <div class="minimap" id="minimap" title="タップしたマスを見る"><div class="mmttl">マップ</div><svg id="boardSvg" viewBox="0 0 ${W} ${H}">${lines}${tiles}<g id="tokens"></g></svg></div>
+      <div class="camctl"><button data-cam="follow" class="on">追いかける</button><button data-cam="top">真上</button><button data-cam="all">全体</button><button id="lookBtn">🔍 マスを見る</button></div>
+      <div class="dpad" id="dpad"><button data-dir="up">▲</button><button data-dir="left">◀</button><button data-dir="back" title="自分のコマに戻る">●</button><button data-dir="right">▶</button><button data-dir="down">▼</button></div>
+      <div class="tileinfo" id="tileInfo"></div>
     </div></div>
     <div class="side">
       <div class="card ctrl"><div class="wheel-box"><div class="pointer"></div><svg viewBox="0 0 100 100"><g id="wheel">${seg}</g><circle cx="50" cy="50" r="12" fill="var(--panel)"/><text id="spinVal" x="50" y="51" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="var(--ink)">-</text></svg></div>
@@ -1259,15 +1293,17 @@ function gameShell(){
       <div class="card"><div class="players" id="players"></div></div>
       <div class="card"><div class="muted" style="margin-bottom:6px">できごと</div><div class="log" id="log"></div></div>
     </div></div>`;
-  const showCam=m=>{document.querySelectorAll("[data-cam]").forEach(b=>b.classList.toggle("on",b.dataset.cam===m));$("#stage").classList.toggle("freecam",m==="free");};
-  const setCam=m=>{window.B3&&B3.setMode(m);showCam(m);};
+  const showCam=m=>{document.querySelectorAll("[data-cam]").forEach(b=>b.classList.toggle("on",b.dataset.cam===m));};
+  const setCam=m=>{window.B3&&B3.setMode(m);showCam(m);if(m==="all")setCursor(null);};
   $("#jobBookBtn").onclick=showJobBook;
   document.querySelectorAll("[data-cam]").forEach(b=>b.onclick=()=>setCam(b.dataset.cam));
-  document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{window.B3&&B3.nudge(b.dataset.nav);showCam("free");});
-  if(window.B3&&B3.onMode)B3.onMode(showCam);
-  // ミニマップをタップすると、その場所を見る
+  document.querySelectorAll("[data-dir]").forEach(b=>b.onclick=()=>moveCursor(b.dataset.dir));
+  $("#lookBtn").onclick=()=>viewCursor?setCursor(null):moveCursor(null);
+  // ミニマップをタップすると、いちばん近いマスを見る
   $("#minimap").onclick=e=>{if(!mounted3D)return;const svg=$("#boardSvg");const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;
-    const q=pt.matrixTransform(svg.getScreenCTM().inverse());B3.lookAtGrid((q.x-PAD)/TW,(q.y-PAD)/TH);showCam("free");};
+    const q=pt.matrixTransform(svg.getScreenCTM().inverse());const gx=(q.x-PAD)/TW,gy=(q.y-PAD)/TH;
+    let best=null,bd=1e9;for(const n of Object.values(N)){const d=Math.hypot(n.x-gx,n.y-gy);if(d<bd){bd=d;best=n.id;}}
+    if(best)setCursor(best);};
   mount3D();
 }
 // 3D盤面（game3d.js）が読み込めたら使う。WebGLが使えない環境では2Dマップだけで遊べる。
@@ -1385,6 +1421,6 @@ function handHtml(p,viewOnly){
 
 homeView();
 </script>
-<script type="module" src="game3d.js"></script>
+<script type="module" src="game3d.js?v=20261025b"></script>
 </body>
 </html>
