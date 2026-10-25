@@ -8,7 +8,12 @@ const wx = n => (n.x - CX) * SP;
 const wz = n => (n.y - CY) * SP;
 
 let renderer, scene, camera, clock, container, nodes;
-let mode = "follow";           // "follow" | "all"
+let mode = "follow";           // "follow" 追いかける | "top" 真上 | "all" 全体 | "free" 自由に見回す
+// 自由カメラ：注視点・距離・向き（ドラッグで移動、ホイール/ピンチでズーム、右ドラッグ/2本指で回転）
+const free = { target: new THREE.Vector3(), dist: 16, yaw: 0, pitch: 0.95 };
+let onModeChange = null;
+// コマとカメラの間にある建物・木は消して、盤面が隠れないようにする
+const occ = []; let occTimer = 0, occOn = true;
 let focusId = null;
 const tokens = new Map();      // id -> {group, from, to, t0, dur, hop, rig}
 const particles = [];
@@ -238,6 +243,7 @@ function buildWorld(typeColor) {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((b, i) => { f(dummy, b, i); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); if (b._col) im.setColorAt(i, b._col); });
     im.castShadow = shadow !== false; im.receiveShadow = true; scene.add(im);
+    if (occOn) occ.push({ im, pos: list.map(b => [b.x, b.z]), mats: im.instanceMatrix.array.slice(), hidden: new Uint8Array(list.length) });
   };
   const place = (o, b, y, sx, sy, sz) => { o.position.set(b.x, y, b.z); o.rotation.set(0, b.ang, 0); o.scale.set(sx, sy, sz); };
   // 家
@@ -282,6 +288,7 @@ function buildWorld(typeColor) {
   inst(new THREE.CylinderGeometry(0.04, 0.05, 1.8, 6), new THREE.MeshStandardMaterial({ color: "#495057", metalness: 0.7, roughness: 0.4 }), lamps, (o, b) => place(o, b, 0.9, 1, 1, 1));
   inst(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshStandardMaterial({ color: "#fff8e1", emissive: "#ffe8a3", emissiveIntensity: 0.8 }), lamps, (o, b) => place(o, b, 1.85, 1, 1, 1), false);
 
+  occOn = false;
   // 外側の森・池・雲
   const outer = (x, z) => x < X0 - TM - 1 || x > X1 + TM + 1 || z < Z0 - TM - 1 || z > Z1 + TM + 1;
   const forest = [];
@@ -500,14 +507,17 @@ function animate() {
   for (const o of scene.children) if (o.userData.cloud) { o.position.x += o.userData.cloud * dt; if (o.position.x > 90) o.position.x = -90; }
   for (const n of Object.values(nodes)) if (n._flag) n._flag.rotation.y = Math.sin(tt * 2) * 0.15;
   let tp, tl;
-  if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 1.0, g.z); tp = new THREE.Vector3(g.x + 1.2, 3.8, g.z + 5.2); }
+  if (mode === "follow" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 1.0, g.z); tp = new THREE.Vector3(g.x + 1.0, 5.6, g.z + 5.6); }
+  else if (mode === "top" && f) { const g = f.group.position; tl = new THREE.Vector3(g.x, 0, g.z); tp = new THREE.Vector3(g.x, 17, g.z + 0.8); }
+  else if (mode === "free") { tl = free.target.clone(); tp = new THREE.Vector3(free.target.x + Math.sin(free.yaw) * Math.cos(free.pitch) * free.dist, free.target.y + Math.sin(free.pitch) * free.dist, free.target.z + Math.cos(free.yaw) * Math.cos(free.pitch) * free.dist); }
   else { const D = Math.max(bounds.Z1 - bounds.Z0, (bounds.X1 - bounds.X0) * 1.25 / Math.max(0.6, camera.aspect)); tl = new THREE.Vector3(0, 0, D * 0.1); tp = new THREE.Vector3(0, D * 0.98, D * 0.66); }
-  const a = 1 - Math.exp(-dt * 3);
+  const a = mode === "free" && dragging ? 1 : 1 - Math.exp(-dt * (mode === "free" ? 8 : 3));
   camPos.lerp(tp, a); camLook.lerp(tl, a);
   camera.position.copy(camPos); camera.lookAt(camLook);
   // 影はカメラの見ている場所のまわりだけ計算する
   sun.target.position.set(camLook.x, 0, camLook.z); sun.position.set(camLook.x - 18, 34, camLook.z + 14);
   moveCars(dt);
+  occTimer -= dt; if (occTimer <= 0) { occTimer = 0.15; updateOcclusion(); }
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]; p.life -= dt;
     if (p.vel) { p.vel.y -= p.g * dt; p.obj.position.addScaledVector(p.vel, dt); p.obj.rotation.x += p.spin * dt; p.obj.rotation.z += p.spin * dt * 0.7; }
@@ -516,6 +526,84 @@ function animate() {
     if (p.life <= 0) { scene.remove(p.obj); p.obj.geometry && p.obj.geometry.dispose(); particles.splice(i, 1); }
   }
   renderer.render(scene, camera);
+}
+
+// カメラから見ている場所までの間（と見ている場所のすぐ近く）にある建物・木を消す
+function updateOcclusion() {
+  const cx = camera.position.x, cz = camera.position.z, tx = camLook.x, tz = camLook.z;
+  const dx = tx - cx, dz = tz - cz, l2 = dx * dx + dz * dz;
+  const far = mode === "all";
+  for (const o of occ) {
+    let changed = false;
+    for (let i = 0; i < o.pos.length; i++) {
+      let hide = false;
+      if (!far) {
+        const [x, z] = o.pos[i];
+        let t = l2 ? ((x - cx) * dx + (z - cz) * dz) / l2 : 1; t = Math.max(0, Math.min(1.08, t));
+        const d = Math.hypot(x - (cx + dx * t), z - (cz + dz * t));
+        hide = d < 2.2 && t > 0.02;
+      }
+      if (hide !== !!o.hidden[i]) {
+        o.hidden[i] = hide ? 1 : 0; changed = true;
+        const arr = o.im.instanceMatrix.array;
+        if (hide) { for (let k = 0; k < 16; k++) arr[i * 16 + k] = 0; }
+        else for (let k = 0; k < 16; k++) arr[i * 16 + k] = o.mats[i * 16 + k];
+      }
+    }
+    if (changed) o.im.instanceMatrix.needsUpdate = true;
+  }
+}
+// マウス・タッチでカメラを動かす
+let dragging = false;
+function enterFree() {
+  if (mode === "free") return;
+  free.target.copy(camLook); free.target.y = 0;
+  const off = camPos.clone().sub(camLook);
+  free.dist = Math.max(4, Math.min(120, off.length()));
+  free.yaw = Math.atan2(off.x, off.z); free.pitch = Math.max(0.35, Math.min(1.5, Math.asin(off.y / off.length())));
+  mode = "free"; onModeChange && onModeChange("free");
+}
+function clampTarget() {
+  if (!bounds) return;
+  free.target.x = Math.max(bounds.X0 - 8, Math.min(bounds.X1 + 8, free.target.x));
+  free.target.z = Math.max(bounds.Z0 - 8, Math.min(bounds.Z1 + 8, free.target.z));
+}
+function pan(dxPx, dyPx) {
+  const k = free.dist / Math.max(300, container.clientHeight) * 1.6;
+  const sx = Math.cos(free.yaw), sz = -Math.sin(free.yaw); // 画面の右方向
+  const fx = -Math.sin(free.yaw), fz = -Math.cos(free.yaw); // 画面の奥方向
+  free.target.x += (-dxPx * sx + dyPx * fx) * k;
+  free.target.z += (-dxPx * sz + dyPx * fz) * k;
+  clampTarget();
+}
+function zoom(f) { free.dist = Math.max(4, Math.min(120, free.dist * f)); }
+function bindControls(el) {
+  el.style.touchAction = "none";
+  const pts = new Map(); let last = null, rotating = false, pinch = null;
+  el.addEventListener("contextmenu", e => e.preventDefault());
+  el.addEventListener("pointerdown", e => {
+    el.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    last = { x: e.clientX, y: e.clientY }; rotating = e.button === 2 || e.shiftKey; dragging = false;
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
+  });
+  el.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2 && pinch) {
+      const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      enterFree(); dragging = true;
+      zoom(pinch.d / Math.max(1, d)); free.yaw -= ang - pinch.ang; pan(mx - pinch.mx, my - pinch.my);
+      pinch = { d, ang, mx, my }; return;
+    }
+    const dx = e.clientX - last.x, dy = e.clientY - last.y;
+    if (!dragging && Math.hypot(dx, dy) < 4) return;
+    enterFree(); dragging = true; last = { x: e.clientX, y: e.clientY };
+    if (rotating) { free.yaw -= dx * 0.008; free.pitch = Math.max(0.35, Math.min(1.5, free.pitch + dy * 0.006)); }
+    else pan(dx, dy);
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) setTimeout(() => dragging = false, 0); };
+  el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  el.addEventListener("wheel", e => { e.preventDefault(); enterFree(); zoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
 }
 
 const B3 = {
@@ -529,6 +617,7 @@ const B3 = {
       renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.domElement.className = "c3d";
+      bindControls(renderer.domElement);
       el.prepend(renderer.domElement);
       scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(42, 1, 0.1, 600); clock = new THREE.Clock();
       buildWorld(typeColor);
@@ -538,7 +627,12 @@ const B3 = {
       return true;
     } catch (e) { console.warn("3D無効", e); return false; }
   },
-  setMode(m) { mode = m; },
+  setMode(m) { if (m === "free") enterFree(); else mode = m; },
+  onMode(fn) { onModeChange = fn; },
+  // 盤面の座標（マスのx,y）を中心に見る
+  lookAtGrid(x, y) { enterFree(); free.target.set((x - CX) * SP, 0, (y - CY) * SP); clampTarget(); free.dist = Math.min(free.dist, 22); },
+  // 自由カメラのボタン操作
+  nudge(kind) { enterFree(); if (kind === "in") zoom(0.75); else if (kind === "out") zoom(1.33); else if (kind === "left") free.yaw += Math.PI / 4; else if (kind === "right") free.yaw -= Math.PI / 4; },
   // list: [{id,idx,color,pos,age,married,spouse,children}]
   setPositions(list, focus) {
     if (!scene) return;
